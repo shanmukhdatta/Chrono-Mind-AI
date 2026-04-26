@@ -125,10 +125,29 @@ export const useCalendarStore = create((set) => ({
   loading: false,
 
   setSelectedDate: (date) => set({ selectedDate: date }),
+  addCalendarTask: (task) =>
+    set((s) => ({
+      calendarData: {
+        ...(s.calendarData || DEMO_CALENDAR),
+        tasks: [task, ...((s.calendarData || DEMO_CALENDAR).tasks || [])],
+      },
+    })),
+  removeCalendarTask: (id) =>
+    set((s) => ({
+      calendarData: s.calendarData
+        ? { ...s.calendarData, tasks: s.calendarData.tasks.filter((t) => t.id !== id) }
+        : s.calendarData,
+    })),
 
   fetchCalendarDay: async (dateStr) => {
     if (isDemoMode()) {
-      set({ calendarData: DEMO_CALENDAR, loading: false })
+      set({
+        calendarData: {
+          ...DEMO_CALENDAR,
+          tasks: DEMO_TASKS.filter((task) => task.scheduled_date === dateStr),
+        },
+        loading: false,
+      })
       return
     }
     set({ loading: true })

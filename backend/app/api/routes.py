@@ -283,7 +283,7 @@ async def chat_with_agent(
         user_id=current_user.id,
         role="assistant",
         content=result["message"],
-        metadata={
+        meta_data={
             "tasks_created": len(result.get("tasks_created", [])),
             "action_type": result.get("action_type", "chat"),
         }

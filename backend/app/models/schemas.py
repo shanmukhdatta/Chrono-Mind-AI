@@ -150,7 +150,7 @@ class ChatMessageOut(BaseModel):
     id: str
     role: str
     content: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = Field(default=None, validation_alias="meta_data")
     created_at: Optional[datetime] = None
 
     class Config:
@@ -182,7 +182,7 @@ class CalendarDay(BaseModel):
     date: str  # YYYY-MM-DD
     timetable: List[TimetableEntryOut]
     tasks: List[TaskOut]
-    free_slots: List[Dict[str, str]]  # [{start, end}]
+    free_slots: List[Dict[str, Any]]  # [{start, end, duration_minutes}]
 
 
 # Update forward reference

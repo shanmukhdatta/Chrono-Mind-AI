@@ -315,6 +315,20 @@ export default function Landing() {
           </GlassCard>
         </RevealOnScroll>
       </section>
+
+      <footer className="px-6 pb-8">
+        <div className="max-w-6xl mx-auto rounded-2xl px-5 py-4 text-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(10,10,20,0.96), rgba(26,26,46,0.92))',
+            border: '1px solid rgba(244,162,97,0.22)',
+            boxShadow: '0 14px 36px rgba(10,10,20,0.18)',
+          }}>
+          <p className="text-xs font-semibold tracking-wide uppercase"
+            style={{ color: 'rgba(255,255,255,0.72)' }}>
+            Built by <span style={{ color: 'var(--peach)' }}>Shanmukh Datta</span>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

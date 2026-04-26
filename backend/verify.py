@@ -1,22 +1,39 @@
 """
-ChronoMind AI — Startup Verification Script
+ChronoMind AI - Startup Verification Script
 Run: python verify.py
-Checks all imports and config before starting the server.
+Checks imports and configuration before starting the server.
 """
+import os
 import sys
+from pathlib import Path
 
-print("ChronoMind AI — Verification\n" + "=" * 40)
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def ok(message: str) -> None:
+    print(f"[OK] {message}")
+
+
+def warn(message: str) -> None:
+    print(f"[WARN] {message}")
+
+
+def err(message: str) -> None:
+    print(f"[ERROR] {message}")
+
+
+print("ChronoMind AI - Verification\n" + "=" * 40)
 
 errors = []
 warnings = []
 
-# Check Python version
 if sys.version_info < (3, 10):
     errors.append(f"Python 3.10+ required, got {sys.version}")
 else:
-    print(f"✅ Python {sys.version.split()[0]}")
+    ok(f"Python {sys.version.split()[0]}")
 
-# Check core imports
 imports = [
     ("fastapi", "FastAPI"),
     ("uvicorn", "Uvicorn"),
@@ -34,52 +51,52 @@ imports = [
 for module, name in imports:
     try:
         __import__(module)
-        print(f"✅ {name}")
+        ok(name)
     except ImportError:
-        errors.append(f"MISSING: {name} — run: pip install -r requirements.txt")
+        errors.append(f"MISSING: {name} - run: pip install -r requirements.txt")
 
-# Check pytesseract
 try:
     import pytesseract
-    version = pytesseract.get_tesseract_version()
-    print(f"✅ pytesseract (tesseract {version})")
-except ImportError:
-    warnings.append("pytesseract not installed — OCR will use fallback demo data")
-    print(f"⚠️  pytesseract not installed")
-except Exception as e:
-    warnings.append(f"tesseract-ocr system binary not found — OCR will use demo data. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
-    print(f"⚠️  tesseract binary not found (OCR will still work with demo data)")
 
-# Check .env
-import os
-from pathlib import Path
+    version = pytesseract.get_tesseract_version()
+    ok(f"pytesseract (tesseract {version})")
+except ImportError:
+    warnings.append("pytesseract not installed - OCR will use fallback demo data")
+    warn("pytesseract not installed")
+except Exception:
+    warnings.append(
+        "tesseract-ocr system binary not found - OCR will use demo data. "
+        "Install from: https://github.com/UB-Mannheim/tesseract/wiki"
+    )
+    warn("tesseract binary not found (OCR will still work with demo data)")
 
 env_file = Path(".env")
 if not env_file.exists():
-    errors.append(".env file missing — copy .env.example to .env")
-    print("❌ .env file missing")
+    errors.append(".env file missing - copy .env.example to .env")
+    err(".env file missing")
 else:
-    print("✅ .env file found")
+    ok(".env file found")
 
-# Check GROQ key
 groq_key = os.getenv("GROQ_API_KEY", "")
 if not groq_key or groq_key == "your-groq-api-key-here":
-    warnings.append("GROQ_API_KEY not set — AI chat will return a setup message instead of working. Get free key at https://console.groq.com/keys")
-    print("⚠️  GROQ_API_KEY not configured (AI features disabled)")
+    warnings.append(
+        "GROQ_API_KEY not set - AI chat will return a setup message instead of working. "
+        "Get a free key at https://console.groq.com/keys"
+    )
+    warn("GROQ_API_KEY not configured (AI features disabled)")
 else:
-    print(f"✅ GROQ_API_KEY configured ({groq_key[:8]}...)")
+    ok(f"GROQ_API_KEY configured ({groq_key[:8]}...)")
 
-# Summary
 print("\n" + "=" * 40)
 if errors:
-    print(f"\n❌ {len(errors)} ERROR(S) — fix before starting:\n")
-    for e in errors:
-        print(f"   → {e}")
+    err(f"{len(errors)} ERROR(S) - fix before starting:\n")
+    for item in errors:
+        print(f"   -> {item}")
     sys.exit(1)
 
 if warnings:
-    print(f"\n⚠️  {len(warnings)} WARNING(S) — app will run but some features limited:\n")
-    for w in warnings:
-        print(f"   → {w}")
+    warn(f"{len(warnings)} WARNING(S) - app will run but some features limited:\n")
+    for item in warnings:
+        print(f"   -> {item}")
 
-print("\n✅ Ready to start! Run: uvicorn app.main:app --reload --port 8000\n")
+ok("Ready to start! Run: uvicorn app.main:app --reload --port 8000")

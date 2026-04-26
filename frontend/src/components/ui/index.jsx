@@ -243,7 +243,9 @@ export const CATEGORY_COLORS = {
   assignment: '#E76F51',
   project: '#E9C46A',
   personal: '#F4A261',
+  health: '#52B788',
   exercise: '#52B788',
+  reading: '#8B5CF6',
   other: '#8B8FA8',
 }
 
@@ -252,7 +254,9 @@ export const CATEGORY_LABELS = {
   assignment: 'Assignment',
   project: 'Project',
   personal: 'Personal',
+  health: 'Health',
   exercise: 'Exercise',
+  reading: 'Reading',
   other: 'Other',
 }
 

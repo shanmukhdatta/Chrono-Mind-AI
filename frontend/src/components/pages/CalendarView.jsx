@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, Clock, X } from 'lucide-react'
 import { format, addDays, subDays, parseISO, setHours, setMinutes } from 'date-fns'
 import { useCalendarStore } from '../../store'
 import { GlassCard, RevealOnScroll, MagneticButton, CATEGORY_COLORS, GlassModal, GlassSelect } from '../ui'
-import api from '../../api'
+import api, { isDemoMode } from '../../api'
 import toast from 'react-hot-toast'
 import { useDrag } from '@use-gesture/react'
 
@@ -164,7 +164,7 @@ function NowIndicator() {
 }
 
 export default function CalendarView() {
-  const { selectedDate, setSelectedDate, calendarData, fetchCalendarDay } = useCalendarStore()
+  const { selectedDate, setSelectedDate, calendarData, fetchCalendarDay, addCalendarTask, removeCalendarTask } = useCalendarStore()
   const timelineRef = useRef(null)
   
   // Modal state
@@ -206,11 +206,53 @@ export default function CalendarView() {
   }
 
   const handleDeleteTask = async (id) => {
+    if (isDemoMode()) {
+      removeCalendarTask(id)
+      toast.success('Task removed')
+      return
+    }
     try {
       await api.delete(`/tasks/${id}`)
       fetchCalendarDay(selectedDate)
       toast.success('Task removed')
     } catch { toast.error('Failed to delete task') }
+  }
+
+  const handleCreateTask = async (aiPlaced = false) => {
+    if (!newTask.title.trim()) {
+      toast.error('Add a task title first')
+      return
+    }
+
+    const startTime = timeValue || `${String(selectedHour ?? 9).padStart(2, '0')}:00`
+    const startDate = setMinutes(setHours(parseISO(selectedDate), Number(startTime.split(':')[0])), Number(startTime.split(':')[1] || 0))
+    const endDate = new Date(startDate.getTime() + newTask.duration * 60000)
+    const payload = {
+      title: newTask.title.trim(),
+      category: newTask.category,
+      duration_minutes: newTask.duration,
+      scheduled_date: selectedDate,
+      start_time: format(startDate, 'HH:mm'),
+      end_time: format(endDate, 'HH:mm'),
+    }
+
+    if (isDemoMode()) {
+      addCalendarTask({ id: `demo-${Date.now()}`, ...payload, status: 'pending', ai_placed: aiPlaced })
+      setShowModal(false)
+      setNewTask({ title: '', duration: 60, category: 'study' })
+      toast.success(aiPlaced ? 'Scheduled successfully!' : 'Added manually!')
+      return
+    }
+
+    try {
+      const { data } = await api.post('/tasks/', payload)
+      addCalendarTask(data)
+      setShowModal(false)
+      setNewTask({ title: '', duration: 60, category: 'study' })
+      toast.success(aiPlaced ? 'Scheduled successfully!' : 'Added manually!')
+    } catch {
+      toast.error('Failed to add task')
+    }
   }
 
   const displayDate = parseISO(selectedDate)
@@ -335,8 +377,8 @@ export default function CalendarView() {
             />
           </div>
           <div className="flex gap-3 mt-4">
-            <MagneticButton className="btn-primary w-full justify-center" onClick={() => { setShowModal(false); toast.success('Scheduled successfully!') }}>Schedule with AI</MagneticButton>
-            <MagneticButton className="btn-ghost w-full justify-center" onClick={() => { setShowModal(false); toast.success('Added manually!') }}>Add Manually</MagneticButton>
+            <MagneticButton className="btn-primary w-full justify-center" onClick={() => handleCreateTask(true)}>Schedule with AI</MagneticButton>
+            <MagneticButton className="btn-ghost w-full justify-center" onClick={() => handleCreateTask(false)}>Add Manually</MagneticButton>
           </div>
         </div>
       </GlassModal>

@@ -366,9 +366,9 @@ export default function Onboarding() {
   const goBack = () => { setDirection(-1); setStep((s) => s - 1) }
 
   const STEPS = [
-    <StepUpload onNext={(entries) => { setUploadedEntries(entries); goNext() }} />,
-    <StepReview entries={uploadedEntries} onNext={goNext} onBack={goBack} />,
-    <StepPreferences onFinish={() => navigate('/dashboard')} />,
+    <StepUpload key="upload" onNext={(entries) => { setUploadedEntries(entries); goNext() }} />,
+    <StepReview key="review" entries={uploadedEntries} onNext={goNext} onBack={goBack} />,
+    <StepPreferences key="preferences" onFinish={() => navigate('/dashboard')} />,
   ]
 
   return (
