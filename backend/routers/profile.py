@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
 from middleware.auth import get_current_user
 from models.response import StandardResponse
@@ -18,7 +21,7 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
             **stats
         })
     except Exception as e:
-        print(f"Profile error: {e}")
+        logger.error(f"Profile error: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 @router.delete("/profile/data")
@@ -46,5 +49,5 @@ async def delete_all_user_data(current_user: dict = Depends(get_current_user)):
 
         return StandardResponse.success_response({'deleted': True})
     except Exception as e:
-        print(f"Delete all data error: {e}")
+        logger.error(f"Delete all data error: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Failed to delete data"))

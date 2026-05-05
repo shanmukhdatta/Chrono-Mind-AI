@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, Query
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
 from middleware.auth import get_current_user
 from models.task import TaskCreate, TaskUpdate
@@ -20,7 +23,7 @@ async def get_task_stats(current_user: dict = Depends(get_current_user)):
         stats = get_stats(current_user['uid'])
         return StandardResponse.success_response(stats)
     except Exception as e:
-        print(f"Error getting stats: {e}")
+        logger.error(f"Error getting stats: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 # ── TASK CRUD ──
@@ -51,7 +54,7 @@ async def create_new_task(body: TaskCreate, current_user: dict = Depends(get_cur
     except ValueError as e:
         return JSONResponse(status_code=400, content=StandardResponse.error_response(str(e)))
     except Exception as e:
-        print(f"Error creating task: {e}")
+        logger.error(f"Error creating task: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 @router.patch("/tasks/{task_id}")
@@ -64,7 +67,7 @@ async def update_existing_task(task_id: str, body: TaskUpdate, current_user: dic
     except ValueError as e:
         return JSONResponse(status_code=400, content=StandardResponse.error_response(str(e)))
     except Exception as e:
-        print(f"Error updating task: {e}")
+        logger.error(f"Error updating task: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 @router.delete("/tasks/{task_id}")
@@ -75,7 +78,7 @@ async def delete_existing_task(task_id: str, current_user: dict = Depends(get_cu
     except ValueError as e:
         return JSONResponse(status_code=404, content=StandardResponse.error_response(str(e)))
     except Exception as e:
-        print(f"Error deleting task: {e}")
+        logger.error(f"Error deleting task: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 @router.post("/tasks/{task_id}/complete")
@@ -86,7 +89,7 @@ async def complete_existing_task(task_id: str, current_user: dict = Depends(get_
     except ValueError as e:
         return JSONResponse(status_code=404, content=StandardResponse.error_response(str(e)))
     except Exception as e:
-        print(f"Error completing task: {e}")
+        logger.error(f"Error completing task: {e}")
         return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 # ── NOTIFICATIONS ──

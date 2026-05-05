@@ -1,4 +1,7 @@
+import logging
 from typing import TypedDict, List, Dict, Optional
+
+logger = logging.getLogger(__name__)
 from langgraph.graph import StateGraph, END
 from firebase_admin import firestore
 from datetime import date, timedelta, datetime
@@ -279,10 +282,10 @@ def run_for_user(uid: str, today: str, tomorrow: str):
         }
         result = graph.invoke(initial_state)
         if result['errors']:
-            print(f"Agent warnings for {uid}: {result['errors']}")
+            logger.warning(f"Agent warnings for {uid}: {result['errors']}")
         return result
     except Exception as e:
-        print(f"Critical agent error for {uid}: {e}")
+        logger.error(f"Critical agent error for {uid}: {e}")
         traceback.print_exc()
         return None
 
@@ -293,19 +296,19 @@ def run_for_all_users():
         today = date.today().isoformat()
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
-        print(f"Running rescheduling agent: {today} → {tomorrow}")
+        logger.info(f"Running rescheduling agent: {today} → {tomorrow}")
         for user_doc in users:
             try:
                 result = run_for_user(user_doc.id, today, tomorrow)
                 if result:
                     r = len(result.get('rescheduled_tasks', []))
                     d = result.get('deleted_count', 0)
-                    print(f"  {user_doc.id}: rescheduled={r} deleted={d}")
+                    logger.info(f"  {user_doc.id}: rescheduled={r} deleted={d}")
             except Exception as e:
-                print(f"Agent error for {user_doc.id}: {e}")
+                logger.error(f"Agent error for {user_doc.id}: {e}")
                 traceback.print_exc()
 
-        print("Rescheduling complete")
+        logger.info("Rescheduling complete")
     except Exception as e:
-        print(f"Critical error in run_for_all_users: {e}")
+        logger.error(f"Critical error in run_for_all_users: {e}")
         traceback.print_exc()

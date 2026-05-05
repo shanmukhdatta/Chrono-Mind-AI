@@ -1,4 +1,7 @@
+import logging
 from fastapi import FastAPI, Depends, Request
+
+logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -61,7 +64,7 @@ async def trigger_reschedule(current_user: dict = Depends(get_admin_user)):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Global exception: {exc}")
+    logger.error(f"Global exception: {exc}")
     return JSONResponse(
         status_code=500,
         content={"success": False, "data": None, "error": "Internal server error"}

@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, Request
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
 from middleware.auth import get_current_user
 from models.assistant import ChatRequest
@@ -71,7 +74,7 @@ async def assistant_chat(
         })
 
     except Exception as e:
-        print(f"Assistant error: {e}")
+        logger.error(f"Assistant error: {e}")
         return JSONResponse(
             status_code=500,
             content=StandardResponse.error_response("Assistant temporarily unavailable")

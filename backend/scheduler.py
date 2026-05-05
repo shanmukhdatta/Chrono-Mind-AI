@@ -1,4 +1,7 @@
+import logging
 from apscheduler.schedulers.background import BackgroundScheduler
+
+logger = logging.getLogger(__name__)
 from apscheduler.triggers.cron import CronTrigger
 from agents.rescheduler import run_for_all_users
 import pytz
@@ -18,10 +21,10 @@ def start_scheduler():
     )
 
     scheduler.start()
-    print("APScheduler started — nightly rescheduling at 23:55 IST")
+    logger.info("APScheduler started — nightly rescheduling at 23:55 IST")
 
 def stop_scheduler():
     """Stop the scheduler cleanly"""
     if scheduler.running:
         scheduler.shutdown()
-        print("APScheduler stopped")
+        logger.info("APScheduler stopped")
