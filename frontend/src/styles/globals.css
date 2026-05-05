@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: #FDFAF7;
+    --color-peach: #E8A87C;
+    --color-peach-light: #FDDCB5;
+    --color-dark: #1A1A2E;
+    --color-gray: #555555;
+    --color-glass-bg: rgba(255, 255, 255, 0.55);
+    --color-glass-border: rgba(255, 255, 255, 0.75);
+    --blur-glass: blur(14px);
+    --radius-card: 20px;
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --shadow-glass: 0 4px 24px rgba(232, 168, 124, 0.12);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  body {
+    @apply bg-cream text-dark font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(232, 168, 124, 0.3);
+    color: #1A1A2E;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(232, 168, 124, 0.4);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(232, 168, 124, 0.6);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/55 backdrop-blur-glass border border-white/75 rounded-card shadow-glass;
+  }
+
+  .glass-card-dark {
+    @apply bg-dark/40 backdrop-blur-glass border border-white/10 rounded-card;
+  }
+
+  .btn-primary {
+    @apply bg-peach text-white font-medium px-6 py-3 rounded-xl 
+           hover:bg-peach-dark hover:shadow-peach transition-all duration-200
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply border-2 border-peach text-peach font-medium px-6 py-3 rounded-xl
+           hover:bg-peach hover:text-white transition-all duration-200
+           active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-white/80 border border-gray-200 rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-peach/50 focus:border-peach
+           transition-all duration-200 placeholder:text-gray-400;
+  }
+
+  .section-title {
+    @apply font-display text-3xl md:text-4xl font-bold text-dark tracking-tight;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-card;
+  }
+
+  .peach-gradient {
+    @apply bg-gradient-to-br from-peach to-peach-light;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-peach to-peach-dark bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
+  .stagger-5 { animation-delay: 0.5s; }
+}

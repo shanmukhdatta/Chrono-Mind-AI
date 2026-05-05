@@ -1,0 +1,23 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Backend
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+backend/venv/
+backend/env/
+
+# General
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Firebase
+serviceAccountKey.json
