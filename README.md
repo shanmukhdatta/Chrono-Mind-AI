@@ -3,6 +3,10 @@
 **AI-Powered Day Planner for College Students**  
 Built with FastAPI · LangGraph · Groq · React · Firebase
 
+## Live Deployments 🚀
+- **Frontend App:** [https://chronomind-ai.vercel.app](https://chronomind-ai.vercel.app) *(Update with your Vercel URL)*
+- **Backend API Docs:** [https://chronomind-backend.onrender.com/docs](https://chronomind-backend.onrender.com/docs) *(Update with your Render URL)*
+
 ---
 
 ## Quick Start
