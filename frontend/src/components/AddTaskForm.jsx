@@ -200,7 +200,7 @@ export function AddTaskForm({ isOpen, onClose, initialData = null, prefillDate =
             <div className="grid grid-cols-2 gap-2">
               {[
                 { value: 'important', label: '⭐ Important', desc: 'Will be rescheduled if missed' },
-                { value: 'not_important', label: '○ Optional', desc: 'Will be deleted if missed' },
+                { value: 'not_important', label: '○ Optional', desc: 'Kept if missed; review or reschedule later' },
               ].map(opt => (
                 <button
                   key={opt.value}
