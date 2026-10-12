@@ -7,6 +7,7 @@ from firebase_admin import firestore
 from datetime import date, timedelta, datetime
 from services.firebase_service import get_db
 from services.notification_service import create_notification
+from agents.missed_task_policy import select_rollover_candidates
 import traceback
 import copy
 
@@ -15,11 +16,9 @@ class AgentState(TypedDict):
     today: str
     tomorrow: str
     incomplete_tasks: List[Dict]
-    not_important_task_ids: List[str]
     tomorrow_tasks: List[Dict]
     free_slots: List[tuple]
     rescheduled_tasks: List[Dict]
-    deleted_count: int
     errors: List[str]
 
 def add_minutes(time_str: str, minutes: int) -> str:
@@ -61,25 +60,21 @@ def compute_free_slots_for_date(existing_tasks: List[Dict]) -> List[tuple]:
     return merge_adjacent_slots(slots)
 
 def fetch_incomplete(state: AgentState) -> AgentState:
-    """Fetch incomplete tasks for today and split by importance"""
+    """Select missed important tasks for rollover without deleting optional work."""
     try:
         db = get_db()
         tasks_ref = db.collection('users').document(state['uid']).collection('tasks')
         docs = tasks_ref.where('date', '==', state['today']).where('completed', '==', False).get()
 
-        important = []
-        not_important_ids = []
-
+        incomplete = []
         for doc in docs:
             task = doc.to_dict()
             task['task_id'] = doc.id
-            if task.get('importance') == 'important':
-                important.append(task)
-            else:
-                not_important_ids.append(doc.id)
+            incomplete.append(task)
 
-        state['incomplete_tasks'] = important
-        state['not_important_task_ids'] = not_important_ids
+        # Optional tasks remain in Firestore on their original date.
+        # They can be reviewed later, never silently deleted.
+        state['incomplete_tasks'] = select_rollover_candidates(incomplete)
     except Exception as e:
         state['errors'].append(f"fetch_incomplete error: {str(e)}")
     return state
@@ -198,37 +193,14 @@ def write_rescheduled(state: AgentState) -> AgentState:
         state['errors'].append(f"write_rescheduled error: {str(e)}")
     return state
 
-def delete_unimportant(state: AgentState) -> AgentState:
-    """Delete not-important incomplete tasks"""
-    deleted = 0
-    try:
-        db = get_db()
-        for task_id in state['not_important_task_ids']:
-            try:
-                db.collection('users').document(state['uid'])\
-                    .collection('tasks').document(task_id).delete()
-                deleted += 1
-            except Exception as e:
-                state['errors'].append(f"delete error for {task_id}: {str(e)}")
-    except Exception as e:
-        state['errors'].append(f"delete_unimportant error: {str(e)}")
-    state['deleted_count'] = deleted
-    return state
-
 def write_notification(state: AgentState) -> AgentState:
-    """Create notifications for rescheduled and deleted tasks"""
+    """Notify about successful rollover moves only, never deleted tasks."""
     try:
         if state['rescheduled_tasks']:
             task_ids = [t['task_id'] for t in state['rescheduled_tasks']]
             count = len(task_ids)
             message = f"{count} important task{'s' if count > 1 else ''} from today were rescheduled."
             create_notification(state['uid'], 'tasks_rescheduled', message, task_ids)
-
-        if state.get('deleted_count', 0) > 0:
-            count = state['deleted_count']
-            message = f"{count} low-priority incomplete task{'s' if count > 1 else ''} were cleared."
-            create_notification(state['uid'], 'tasks_deleted', message, [])
-
     except Exception as e:
         state['errors'].append(f"write_notification error: {str(e)}")
     return state
@@ -241,26 +213,24 @@ def build_rescheduler_graph():
     g.add_node('compute_free_slots', compute_free_slots)
     g.add_node('assign_slots', assign_slots)
     g.add_node('write_rescheduled', write_rescheduled)
-    g.add_node('delete_unimportant', delete_unimportant)
     g.add_node('write_notification', write_notification)
 
     g.set_entry_point('fetch_incomplete')
 
     def route_from_fetch(state):
         if not state['incomplete_tasks']:
-            return 'delete_unimportant'
+            return 'write_notification'
         return 'fetch_tomorrow'
 
     g.add_conditional_edges('fetch_incomplete', route_from_fetch, {
         'fetch_tomorrow': 'fetch_tomorrow',
-        'delete_unimportant': 'delete_unimportant'
+        'write_notification': 'write_notification'
     })
 
     g.add_edge('fetch_tomorrow', 'compute_free_slots')
     g.add_edge('compute_free_slots', 'assign_slots')
     g.add_edge('assign_slots', 'write_rescheduled')
-    g.add_edge('write_rescheduled', 'delete_unimportant')
-    g.add_edge('delete_unimportant', 'write_notification')
+    g.add_edge('write_rescheduled', 'write_notification')
     g.add_edge('write_notification', END)
 
     return g.compile()
@@ -273,11 +243,9 @@ def run_for_user(uid: str, today: str, tomorrow: str):
             'today': today,
             'tomorrow': tomorrow,
             'incomplete_tasks': [],
-            'not_important_task_ids': [],
             'tomorrow_tasks': [],
             'free_slots': [],
             'rescheduled_tasks': [],
-            'deleted_count': 0,
             'errors': []
         }
         result = graph.invoke(initial_state)
@@ -302,8 +270,7 @@ def run_for_all_users():
                 result = run_for_user(user_doc.id, today, tomorrow)
                 if result:
                     r = len(result.get('rescheduled_tasks', []))
-                    d = result.get('deleted_count', 0)
-                    logger.info(f"  {user_doc.id}: rescheduled={r} deleted={d}")
+                    logger.info(f"  {user_doc.id}: rescheduled={r}")
             except Exception as e:
                 logger.error(f"Agent error for {user_doc.id}: {e}")
                 traceback.print_exc()
