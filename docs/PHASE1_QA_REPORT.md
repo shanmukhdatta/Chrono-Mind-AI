@@ -54,3 +54,27 @@ No broad Firestore fallback reads, production index deployment, data migration o
 - The second report is evidence of local integration, but GitHub CI **does not independently authenticate against Firebase**.
 
 **Disposition:** Phase 1 engineering verification is ready for human review; **do not mark Phase 0 or Phase 1 approved, merge either PR, or start Phase 2** before reviewer sign-off and remaining required acceptance gates.
+
+## Third Antigravity verification report — isolated safety behaviors
+
+**Evidence source:** user-provided Antigravity summary, 2026-10-13, on code/docs SHA `0098a96fbe95476c26677859263ebc5413ee1c77`. The deep-verification Python harness was written to a local Antigravity scratch directory and **was not part of the upstream repository**. Its summarized outcomes are reported here as external QA, not independently reproduced emulator runs.
+
+| Area | Reported behavior | Actual verification class |
+| --- | --- | --- |
+| Missing and invalid bearer tokens | HTTP 401, sanitized error details | Isolated dependency/error tests |
+| Expired and revoked token failures | HTTP 401 with distinct messages | Simulated Firebase verifier exceptions; not real expired/revoked tokens |
+| Valid token and admin authorization | Decoded UID; absent/placeholder/mismatched ADMIN_UID rejected | Isolated auth checks, not a real token provenance proof |
+| Task overlap | Sequential conflict rejected with HTTP 409 | Live sequential HTTP conflict, **not simultaneous competing writes** |
+| Nightly job claim | Token 1 claims, token 2 rejected, only owner can finish | In-memory transactional test doubles; **not multi-worker Firestore/Emulator** |
+| Optional missed tasks | Optional/completed tasks excluded from relocation candidates | Pure policy/regression check, **not full live document persistence flow** |
+| Reschedule notification | Notification created for committed moves only | Isolated mocked callback/policy test, **not actual push/email delivery** |
+
+**Important distinction:** the report describes a "test database and isolated harnesses" but provides no actual Firebase Emulator startup/output, synchronized multi-process Firestore transactions, or simultaneous task-create contention. These integration gates **remain open**. The application still has a read-before-write (TOCTOU) conflict race. The permanent migration/transaction plan must explicitly address that before users can rely on no-double-booking under concurrency.
+
+**Browser status:** report provides a manual Chrome walkthrough but not actual sign-in or calendar clicks. UI smoke acceptance remains open.
+
+**Credentials:** a testing credential was present in the pasted QA transcript. It is intentionally excluded from this repository. Rotate the test-account password before further use and do not paste secrets in issues, chat transcripts, CI output, or source.
+
+**Repository hygiene found during review:** 16 tracked `.pyc` files had produced repeated dirty working trees. Phase 1 removes these generated binary artifacts, expands Python ignore patterns and adds a CI gate to prevent committed bytecode. New durable unit tests cover both token-expiry and token-revocation error branches with simulated exceptions, but do **not** establish real Firebase revocation behavior.
+
+**Disposition:** keep Phase 0/1 marked IN PROGRESS until explicit review approval, browser smoke evidence and the declared Phase 0 Firebase/emulator safety gates. Do not merge or deploy.

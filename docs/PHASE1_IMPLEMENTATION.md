@@ -58,3 +58,11 @@ Independent GitHub evidence on that SHA:
 - [PR #38443766957](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443766957): **success**.
 
 **Disposition:** Development foundation and CI evidence are ready for review. Browser automation failed to provision its Playwright driver; no interactive browser test is established. Phase 0 Firebase token edge cases and distributed concurrency remain pending. Reviewer sign-off and deliberate merge remain required. Do not advance to Phase 2 automatically.
+
+## Deep verification evidence and repository hygiene
+
+The third Antigravity report exercised the six requested areas using a scratch test harness, simulated Firebase errors and in-memory Firestore claim doubles. It **did not** run true multi-process Firestore/emulator concurrency tests or an interactive browser session. The existing task-create TOCTOU risk remains. Detailed test provenance: [PHASE1_QA_REPORT.md](PHASE1_QA_REPORT.md).
+
+Phase 1 also removes 16 compiled Python artifacts accidentally tracked in nested packages, ignores future Python bytecode globally, and adds a CI check that rejects committed `.pyc` files. Two new reproducible pytest cases cover the expired/revoked error-handling branches with simulated exceptions. These are **unit tests** only.
+
+Never commit test credentials. A test password was copied into the external report; rotate it before continued testing.

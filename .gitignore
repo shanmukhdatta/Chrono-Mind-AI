@@ -29,3 +29,7 @@ serviceAccountKey.json
 **/serviceAccountKey.json
 **/.venv/
 **/node_modules/
+
+# Python bytecode, including compiled files under nested package directories
+**/__pycache__/
+*.py[cod]

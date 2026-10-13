@@ -27,6 +27,13 @@ jobs:
       - name: Install pinned backend dependencies
         working-directory: backend
         run: python -m pip install -r requirements.txt
+      - name: Reject tracked Python bytecode
+        run: |
+          if [ -n "$(git ls-files -- '*.pyc')" ]; then
+            echo "Generated .pyc files must not be tracked in Git" >&2
+            git ls-files -- '*.pyc'
+            exit 1
+          fi
       - name: Compile backend sources
         run: python -m compileall -q backend
       - name: Run backend regressions and API smoke tests

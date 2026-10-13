@@ -76,3 +76,12 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 - Browser UI interaction is unverified (Playwright driver download failed); human Chrome/Edge login/calendar inspection remains an acceptance action.
 - Phase 0's bad/revoked/expired token, multi-worker lease, simultaneous task-write, notification and non-destructive missed-task integration tests remain unverified. Those safeguards **must not** be inferred from successful CRUD or regression tests.
 - PR [#1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1) and PR [#2](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/2) remain in review. Phase 1 is **IN PROGRESS / AWAITING REVIEW**, not complete. No merge or deployment.
+
+## Phase 1 deep verification intake (2026-10-13)
+
+- Antigravity isolated harness reported expected missing/invalid/expired/revoked token responses; missing/mismatched administrator rejected; owner-only nightly job claim with **in-memory doubles**; optional missed-task candidate preservation; and notification writes only for apparently committed moves.
+- **Do not equate harness outcomes with real expired/revoked Firebase tokens, simultaneous cross-process Firestore transactions or actual notification delivery.** Live concurrent task writes and distributed lease tests are unverified. The TOCTOU task-write race is still present.
+- Browser guidance was provided, but interactive browser execution has not been verified.
+- Phase 1 cleanup removes **16 tracked Python bytecode files** and ensures subsequent compilation does not dirty Git; adds a CI guard and permanent simulated token-error branch tests.
+- A test password appeared in the external QA transcript. No credential is copied into Git; rotate it before reuse.
+- Maintain Phase 0 and Phase 1 as **IN PROGRESS / awaiting reviewer acceptance**. Do not merge/deploy/start Phase 2.
