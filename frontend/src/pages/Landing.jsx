@@ -31,7 +31,7 @@ export default function Landing() {
     { icon: Calendar, title: '24-Hour Calendar', desc: 'Full day view from midnight to midnight. Click any slot to add tasks instantly.' },
     { icon: Target, title: 'Smart Priority', desc: 'Important tasks get rescheduled. Optional unfinished tasks are preserved for review. Smart clutter-free planning.' },
     { icon: Sparkles, title: 'AI Assistant', desc: 'Voice and text scheduling. Just say "Practice DSA for 1 hour from now" and it is done.' },
-    { icon: Repeat, title: 'Recurring Tasks', desc: 'Set up daily, weekly, or custom recurring schedules. Let the pattern handle the repetition.' },
+    { icon: Repeat, title: 'Recurrence (Planned)', desc: 'Save repeat preferences now. Automatic creation of future occurrences is planned for V2 Phase 3.' },
     { icon: Upload, title: 'Timetable Import', desc: 'Upload your college timetable (Phase 2 preview). OCR integration coming soon.' },
   ]
 
