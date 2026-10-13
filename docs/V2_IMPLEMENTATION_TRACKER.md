@@ -67,3 +67,12 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 **Phase 1 initial CI evidence:** both jobs passed on commit `f1844556`: backend 59 passed, frontend 3 passed, Vite build passed. [Push workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441356503) · [PR workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441410275). The final branch head, local test-account smoke checks, and review remain outstanding. No status promotion.
 
 **2026-10-13 external QA intake:** Windows Antigravity reported successful 60-test Python suite, 3-test frontend suite, both local servers and 11 authenticated Firebase task operations. A composite-index query failure was discovered; the local fix was not pushed. The Phase 1 branch adds an independently audited single-index query shape plus regression tests. See [PHASE1_QA_REPORT.md](PHASE1_QA_REPORT.md). Do not infer distributed concurrency or browser automation completion.
+
+## Phase 1 latest verification and review gate (2026-10-13)
+
+- Exact upstream implementation SHA: `96f256a29f541b9bb44148969e0304b4d745462f`.
+- GitHub [push](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443760055) and [PR](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443766957) quality workflows: **success**; **63 backend tests**, **3 frontend tests**, compilation and Vite production build passed.
+- Second Antigravity report: verified clean fast-forward, preserved stash, **63 local backend**, **3 frontend**, working /health and Firebase authenticated task lifecycle, with day/range queries now free of the earlier composite-index failure. Treat this as **externally reported live integration evidence**, not GitHub CI Firebase coverage.
+- Browser UI interaction is unverified (Playwright driver download failed); human Chrome/Edge login/calendar inspection remains an acceptance action.
+- Phase 0's bad/revoked/expired token, multi-worker lease, simultaneous task-write, notification and non-destructive missed-task integration tests remain unverified. Those safeguards **must not** be inferred from successful CRUD or regression tests.
+- PR [#1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1) and PR [#2](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/2) remain in review. Phase 1 is **IN PROGRESS / AWAITING REVIEW**, not complete. No merge or deployment.

@@ -16,9 +16,9 @@
 
 - [x] Branch created from Phase 0 without touching main.
 - [x] Changes isolated to reusable configuration/lifecycle modules, frontend date helper, tests, CI and documentation.
-- [ ] All backend tests pass on Phase 1 head SHA in GitHub Actions.
-- [ ] Frontend unit tests and production build pass on Phase 1 head SHA in GitHub Actions.
-- [ ] Independent Antigravity local backend/frontend startup and test-account CRUD checks.
+- [x] All backend tests pass on Phase 1 head SHA in GitHub Actions (**63 passed** at `96f256a2`).
+- [x] Frontend unit tests and production build pass on Phase 1 head SHA in GitHub Actions (**3 passed**, production build successful).
+- [x] Independent Antigravity local backend/frontend startup and test-account CRUD checks **reported** on upstream `96f256a2` (see QA report; browser UI remains untested).
 - [ ] Reviewer approval of the Phase 1 PR.
 
 ## Preserved safeguards and outstanding risks
@@ -48,3 +48,13 @@ Use `CHRONOMIND_DISABLE_LEGACY_SCHEDULER=1` in test/local environments. Run fron
 ## Antigravity QA finding and follow-up
 
 The user-provided Windows QA report recorded 60/60 backend tests, 3/3 frontend tests, working HTTP startup, and 11/11 live test-Firebase operations after a **local, uncommitted** Firestore index workaround. See [Phase 1 QA intake](PHASE1_QA_REPORT.md). The GitHub branch now includes a reviewed index-free query implementation and tests; that new commit must pass CI and be rechecked against live Firebase. Browser automation, cross-worker concurrency, token expiry/revocation, and review sign-off remain outstanding.
+
+## Second integration verification (2026-10-13)
+
+The Antigravity runner reported a successful Windows retest **on the same GitHub SHA `96f256a2`** after preserving local uncommitted changes in a stash. It confirmed 63 backend tests, 3 frontend tests, Vite build, backend /health, authenticated Firebase CRUD, overlap conflict response, and indexed day/range queries without the earlier Firestore composite-index exception. The externally reported test count was 11/11, while ten HTTP request categories are itemized in the report. See [QA report](PHASE1_QA_REPORT.md).
+
+Independent GitHub evidence on that SHA:
+- [Push #38443760055](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443760055): **success**.
+- [PR #38443766957](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443766957): **success**.
+
+**Disposition:** Development foundation and CI evidence are ready for review. Browser automation failed to provision its Playwright driver; no interactive browser test is established. Phase 0 Firebase token edge cases and distributed concurrency remain pending. Reviewer sign-off and deliberate merge remain required. Do not advance to Phase 2 automatically.
