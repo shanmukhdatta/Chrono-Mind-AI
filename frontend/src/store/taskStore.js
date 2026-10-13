@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import { format } from 'date-fns'
+import { localDateKey } from '../lib/date'
 
 export const useTaskStore = create((set, get) => ({
   tasks: [],
-  selectedDate: format(new Date(), 'yyyy-MM-dd'),
+  selectedDate: localDateKey(),
   isLoading: false,
   error: null,
 
@@ -20,7 +20,7 @@ export const useTaskStore = create((set, get) => ({
   setError: (error) => set({ error, isLoading: false }),
   clearTasks: () => set({ tasks: [] }),
   seedDemoTasks: () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = localDateKey();
     set({
       tasks: [
         { task_id: 'demo-1', title: 'DSA Practice', date: today, start_time: '09:00', end_time: '10:30', duration_minutes: 90, importance: 'important', recurrence: 'none', completed: false, rescheduled: false },

@@ -10,7 +10,7 @@
 | Phase | Area | State | Exit criterion |
 | --- | --- | --- | --- |
 | 0 | Legacy repository audit, safety, security | IN PROGRESS | No known critical destructive/auth defects, tests, startup and local review |
-| 1 | Modular development foundation, CI | NOT STARTED | Reproducible environment, structured packages, automated gates |
+| 1 | Modular development foundation, CI | IN PROGRESS | Reproducible environment, structured packages, automated gates |
 | 2 | PostgreSQL, authentication, Firestore migration | NOT STARTED | Reconciled, reversible migration with account ownership |
 | 3 | Tasks, recurrence and calendar | NOT STARTED | Full CRUD, recurrence exceptions and calendar integration |
 | 4 | Goals, preferences and prioritization | NOT STARTED | Durable goal-task relationships and documented scoring |
@@ -56,3 +56,10 @@
 ## Next milestone
 
 Complete remaining live Firebase smoke tests and CI/frontend verification; resolve documented legacy concurrency gaps before marking Phase 0 done.
+
+## Phase 1 in progress (2026-10-13)
+
+- Started separate branch `v2/phase1-foundation` from the unmerged Phase 0 branch. **Do not merge Phase 0 or Phase 1 automatically.**
+- Scope: shared configuration and lifecycle boundaries, local-date tests, CI quality gates, development documentation. See [Phase 1 implementation](PHASE1_IMPLEMENTATION.md).
+- Acceptance is **pending** green final-head CI, external local startup/CRUD verification, and reviewer sign-off.
+- Phase 0 remains IN PROGRESS and its Firebase/emulator/concurrency blockers are unchanged.

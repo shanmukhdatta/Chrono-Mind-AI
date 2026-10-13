@@ -28,7 +28,7 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env` privately with your own values; service account file path should point to an actual readable key JSON file **outside the repository**. Set process environment variables (the backend does not automatically call `load_dotenv`):
+Edit `backend/.env` privately with your own values; service account file path should point to an actual readable key JSON file **outside the repository**. Phase 1 loads `backend/.env` during backend configuration initialization (existing process environment variables take precedence). For explicit PowerShell configuration, set environment variables as follows:
 
 ```powershell
 $env:FIREBASE_SERVICE_ACCOUNT_PATH = "C:\path\outside\repo\firebase-service-account.json"
@@ -89,3 +89,7 @@ Expected: Vite reports local address, typically `http://localhost:5173`. Test lo
 ### Known testing boundaries
 
 Running `pytest` alone cannot validate live Firebase credentials, network-dependent LLM behavior, browser integrations or multi-instance concurrency. Those must be separately demonstrated in a test environment.
+
+## Phase 1 automated quality gates
+
+Run `python -m pytest -q` in `backend/`, plus `npm test` and `npm run build` in `frontend/`. The new GitHub Actions workflow `.github/workflows/phase1-quality.yml` runs these checks on the Phase 1 branch and on PRs to Phase 0/main. Frontend tests pin `TZ=Asia/Kolkata` to exercise calendar-day boundaries. These checks do not replace the separate Firebase emulator and Antigravity test-account checks pending from Phase 0.
