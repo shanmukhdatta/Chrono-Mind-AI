@@ -58,9 +58,9 @@ async def health_check():
 @app.post("/api/admin/trigger-reschedule")
 async def trigger_reschedule(current_user: dict = Depends(get_admin_user)):
     """Admin endpoint to manually trigger rescheduling (for testing)"""
-    from agents.rescheduler import run_for_all_users
-    run_for_all_users()
-    return {"success": True, "message": "Rescheduling triggered"}
+    from scheduler import run_nightly_once
+    outcome = run_nightly_once()
+    return {"success": True, "data": outcome}
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
