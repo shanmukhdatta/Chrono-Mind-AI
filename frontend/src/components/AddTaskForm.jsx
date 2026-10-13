@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { format } from 'date-fns'
 import { X, Plus, Edit3, Calendar, Clock, Star, Repeat } from 'lucide-react'
 import { useTasks } from '../hooks/useTasks'
 import { Button } from './ui/Button'
@@ -18,7 +19,7 @@ export function AddTaskForm({ isOpen, onClose, initialData = null, prefillDate =
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({})
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = format(new Date(), 'yyyy-MM-dd')
   const defaultDate = prefillDate || today
 
   const [form, setForm] = useState({
@@ -218,10 +219,10 @@ export function AddTaskForm({ isOpen, onClose, initialData = null, prefillDate =
             </div>
           </div>
 
-          {/* Recurrence */}
+          {/* Recurrence rules are currently stored, but future instances are not generated automatically. */}
           <div>
             <label className="text-xs font-semibold text-dark-muted uppercase tracking-wide block mb-1.5">
-              <Repeat className="w-3 h-3 inline mr-1" />Repeat
+              <Repeat className="w-3 h-3 inline mr-1" />Repeat (rule preview)
             </label>
             <select
               value={form.recurrence}
@@ -232,6 +233,7 @@ export function AddTaskForm({ isOpen, onClose, initialData = null, prefillDate =
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            <p className="text-xs text-dark-muted mt-1">Repeats are saved as preferences only; future instances will be created in V2 Phase 3.</p>
           </div>
         </div>
 
