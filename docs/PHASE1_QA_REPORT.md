@@ -78,3 +78,7 @@ No broad Firestore fallback reads, production index deployment, data migration o
 **Repository hygiene found during review:** 16 tracked `.pyc` files had produced repeated dirty working trees. Phase 1 removes these generated binary artifacts, expands Python ignore patterns and adds a CI gate to prevent committed bytecode. New durable unit tests cover both token-expiry and token-revocation error branches with simulated exceptions, but do **not** establish real Firebase revocation behavior.
 
 **Disposition:** keep Phase 0/1 marked IN PROGRESS until explicit review approval, browser smoke evidence and the declared Phase 0 Firebase/emulator safety gates. Do not merge or deploy.
+
+## Browser guide correction
+
+The Antigravity instruction to enter an email/password in the frontend was incorrect. `useAuth.signIn` invokes Firebase `signInWithPopup` with `GoogleAuthProvider`; the frontend does not implement a password form. Use [PHASE1_BROWSER_QA.md](PHASE1_BROWSER_QA.md) for the real UI behavior. Browser interactions remain unverified.

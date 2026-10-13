@@ -66,3 +66,7 @@ The third Antigravity report exercised the six requested areas using a scratch t
 Phase 1 also removes 16 compiled Python artifacts accidentally tracked in nested packages, ignores future Python bytecode globally, and adds a CI check that rejects committed `.pyc` files. Two new reproducible pytest cases cover the expired/revoked error-handling branches with simulated exceptions. These are **unit tests** only.
 
 Never commit test credentials. A test password was copied into the external report; rotate it before continued testing.
+
+## Corrected browser acceptance checklist
+
+The source-level review of `frontend/src/hooks/useAuth.js` confirmed Google OAuth popup login, **not** an email/password form. The earlier Antigravity guide described a UI that does not exist. Use the source-matched [manual browser acceptance checklist](PHASE1_BROWSER_QA.md), and do not mark UI verified until its checks are actually performed.

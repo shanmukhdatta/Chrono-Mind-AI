@@ -85,3 +85,5 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 - Phase 1 cleanup removes **16 tracked Python bytecode files** and ensures subsequent compilation does not dirty Git; adds a CI guard and permanent simulated token-error branch tests.
 - A test password appeared in the external QA transcript. No credential is copied into Git; rotate it before reuse.
 - Maintain Phase 0 and Phase 1 as **IN PROGRESS / awaiting reviewer acceptance**. Do not merge/deploy/start Phase 2.
+
+**Manual UI checklist corrected:** frontend authentication is Google OAuth popup; the Antigravity email/password browser guide does not match the source. See [PHASE1_BROWSER_QA.md](PHASE1_BROWSER_QA.md). Checklist is PENDING actual interaction evidence.
