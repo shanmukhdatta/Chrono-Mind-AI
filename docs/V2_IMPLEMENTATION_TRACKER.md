@@ -63,3 +63,5 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 - Scope: shared configuration and lifecycle boundaries, local-date tests, CI quality gates, development documentation. See [Phase 1 implementation](PHASE1_IMPLEMENTATION.md).
 - Acceptance is **pending** green final-head CI, external local startup/CRUD verification, and reviewer sign-off.
 - Phase 0 remains IN PROGRESS and its Firebase/emulator/concurrency blockers are unchanged.
+
+**Phase 1 initial CI evidence:** both jobs passed on commit `f1844556`: backend 59 passed, frontend 3 passed, Vite build passed. [Push workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441356503) · [PR workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441410275). The final branch head, local test-account smoke checks, and review remain outstanding. No status promotion.

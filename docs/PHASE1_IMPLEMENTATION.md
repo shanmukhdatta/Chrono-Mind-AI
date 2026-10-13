@@ -36,3 +36,11 @@ From `frontend/`: `npm ci`, `npm test`, and `npm run build`.
 Use `CHRONOMIND_DISABLE_LEGACY_SCHEDULER=1` in test/local environments. Run frontend tests with `TZ=Asia/Kolkata` to explicitly cover midnight UTC/local date boundaries.
 
 **Not verified here:** valid/expired/revoked Firebase tokens against a real test project, Firestore transactional races, full startup, real UI interaction and network-dependent LLM/notification delivery. Phase 0 PR cannot be approved based only on Phase 1 CI.
+
+## CI evidence on initial implementation commit
+
+- Commit: [`f1844556`](https://github.com/shanmukhdatta/Chrono-Mind-AI/commit/f1844556e039e7614100f1d7e107e5abfb8c8d1a).
+- [Push run #38441356503](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441356503) and [PR run #38441410275](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441410275): both backend and frontend jobs **passed**.
+- Backend pinned Python 3.11: **59 passed, 1 pytest-asyncio deprecation warning**; `compileall` passed.
+- Frontend Node 20: **3 tests passed**, `npm ci` and `npm run build` passed. Vite reported bundle-size warning; dependency/runner deprecation notices were non-fatal.
+- This is **initial-code-commit evidence**; a subsequent evidence/smoke-test commit must have its own final-head CI verified before approval.
