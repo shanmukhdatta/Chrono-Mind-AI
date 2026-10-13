@@ -49,8 +49,8 @@
 - Daily Firestore transactional claim added around legacy scheduler.
 - Strict CREATE/PATCH validation, task serialization and IST date handling addressed.
 - Recurrence remains incomplete; the UI now calls this out as a rule preview.
-- Pure slot-planner and schema regression tests were run on exact GitHub blob-matched local files: **19 passed**.
-- Full backend integration, frontend build and external Firebase checks remain to be confirmed through CI and Antigravity.
+- Pure slot-planner and schema regression tests were run on exact GitHub blob-matched local files: **19 passed**. GitHub Actions additionally confirmed **44 backend tests**, **22 focused tests**, Python compilation and frontend Vite production build on the code head.
+- Full test-backed backend CI and frontend build passed. External Firebase/emulator verification and Antigravity browser startup still remain.
 - See [Phase 0 Audit](PHASE0_AUDIT.md), [Development Guide](DEVELOPMENT.md), [Test Results](TEST_RESULTS.md), and [Migration Plan](V2_MIGRATION.md).
 
 ## Next milestone
