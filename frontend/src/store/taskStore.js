@@ -20,7 +20,7 @@ export const useTaskStore = create((set, get) => ({
   setError: (error) => set({ error, isLoading: false }),
   clearTasks: () => set({ tasks: [] }),
   seedDemoTasks: () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
     set({
       tasks: [
         { task_id: 'demo-1', title: 'DSA Practice', date: today, start_time: '09:00', end_time: '10:30', duration_minutes: 90, importance: 'important', recurrence: 'none', completed: false, rescheduled: false },
