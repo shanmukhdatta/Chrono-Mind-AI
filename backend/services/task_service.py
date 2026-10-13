@@ -1,11 +1,28 @@
 from firebase_admin import firestore
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+from zoneinfo import ZoneInfo
+from models.task import validate_duration
 from .firebase_service import get_db
-from collections import defaultdict
 import bleach
 
 class ConflictError(Exception):
     pass
+
+
+def serialize_task(doc):
+    """Return Firestore timestamps as timezone-aware UTC ISO strings."""
+    item = doc.to_dict() or {}
+    item["task_id"] = doc.id
+    for field in ("created_at", "updated_at", "completed_at"):
+        stamp = item.get(field)
+        if isinstance(stamp, datetime):
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            item[field] = stamp.astimezone(timezone.utc).isoformat()
+        elif stamp is firestore.SERVER_TIMESTAMP:
+            item[field] = None
+    return item
+
 
 def sanitize_input(text):
     if not text:
@@ -33,12 +50,7 @@ def create_task(uid, data):
     if conflict:
         raise ConflictError(f"Conflicts with '{conflict['title']}' ({conflict['start_time']} - {conflict['end_time']})")
 
-    sh, sm = map(int, data.start_time.split(':'))
-    eh, em = map(int, data.end_time.split(':'))
-    duration = (eh * 60 + em) - (sh * 60 + sm)
-
-    if duration < 15:
-        raise ValueError('Task duration must be at least 15 minutes')
+    duration = validate_duration(data.start_time, data.end_time)
 
     task_data = {
         'uid': uid,
@@ -59,8 +71,7 @@ def create_task(uid, data):
 
     doc_ref = db.collection('users').document(uid).collection('tasks').document()
     doc_ref.set(task_data)
-    task_data['task_id'] = doc_ref.id
-    return task_data
+    return serialize_task(doc_ref.get())
 
 def get_tasks(uid, date=None, status='all'):
     db = get_db()
@@ -75,15 +86,7 @@ def get_tasks(uid, date=None, status='all'):
     tasks = []
 
     for doc in docs:
-        task = doc.to_dict()
-        task['task_id'] = doc.id
-
-        # Serialize Firestore timestamps
-        for field in ('created_at', 'updated_at', 'completed_at'):
-            if task.get(field) and hasattr(task[field], 'isoformat'):
-                task[field] = task[field].isoformat()
-            elif task.get(field) and hasattr(task[field], 'timestamp'):
-                task[field] = datetime.fromtimestamp(task[field].timestamp()).isoformat()
+        task = serialize_task(doc)
 
         if status == 'completed' and not task.get('completed'):
             continue
@@ -121,7 +124,7 @@ def update_task(uid, task_id, updates):
     if updates.recurrence is not None:
         update_data['recurrence'] = updates.recurrence
 
-    if 'start_time' in update_data or 'end_time' in update_data:
+    if any(key in update_data for key in ('date', 'start_time', 'end_time')):
         start = update_data.get('start_time', current['start_time'])
         end = update_data.get('end_time', current['end_time'])
 
@@ -134,22 +137,12 @@ def update_task(uid, task_id, updates):
         if conflict:
             raise ConflictError(f"Conflicts with '{conflict['title']}' ({conflict['start_time']} - {conflict['end_time']})")
 
-        sh, sm = map(int, start.split(':'))
-        eh, em = map(int, end.split(':'))
-        update_data['duration_minutes'] = (eh * 60 + em) - (sh * 60 + sm)
+        update_data['duration_minutes'] = validate_duration(start, end)
 
     update_data['updated_at'] = firestore.SERVER_TIMESTAMP
     task_ref.update(update_data)
 
-    updated = task_ref.get().to_dict()
-    updated['task_id'] = task_id
-    # Serialize timestamps
-    for field in ('created_at', 'updated_at', 'completed_at'):
-        if updated.get(field) and hasattr(updated[field], 'isoformat'):
-            updated[field] = updated[field].isoformat()
-        elif updated.get(field) and hasattr(updated[field], 'timestamp'):
-            updated[field] = datetime.fromtimestamp(updated[field].timestamp()).isoformat()
-    return updated
+    return serialize_task(task_ref.get())
 
 def delete_task(uid, task_id):
     db = get_db()
@@ -171,6 +164,8 @@ def complete_task(uid, task_id):
 
     if not doc.exists:
         raise ValueError('Task not found')
+    if doc.to_dict().get('uid') != uid:
+        raise ValueError('Unauthorized')
 
     task_ref.update({
         'completed': True,
@@ -178,9 +173,7 @@ def complete_task(uid, task_id):
         'updated_at': firestore.SERVER_TIMESTAMP,
     })
 
-    updated = task_ref.get().to_dict()
-    updated['task_id'] = task_id
-    return updated
+    return serialize_task(task_ref.get())
 
 def get_stats(uid):
     """Get stats with a single Firestore read — no N+1 query"""
@@ -205,7 +198,7 @@ def get_stats(uid):
 
     # Calculate streak from pre-built set — O(365) dict lookups, 0 extra Firestore reads
     streak = 0
-    today = date.today()
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
     for i in range(365):
         check_date = (today - timedelta(days=i)).isoformat()
         if check_date in dates_with_completions:
@@ -293,13 +286,7 @@ def get_tasks_range(uid, date_from, date_to, status='all'):
 
     tasks = []
     for doc in docs:
-        task = doc.to_dict()
-        task['task_id'] = doc.id
-        for field in ('created_at', 'updated_at', 'completed_at'):
-            if task.get(field) and hasattr(task[field], 'isoformat'):
-                task[field] = task[field].isoformat()
-            elif task.get(field) and hasattr(task[field], 'timestamp'):
-                task[field] = datetime.fromtimestamp(task[field].timestamp()).isoformat()
+        task = serialize_task(doc)
         if status == 'completed' and not task.get('completed'):
             continue
         if status == 'incomplete' and task.get('completed'):
