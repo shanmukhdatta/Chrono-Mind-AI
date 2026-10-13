@@ -3,7 +3,7 @@
 **AI-Powered Day Planner for College Students**  
 Built with FastAPI · LangGraph · Groq · React · Firebase
 
-> **V2 development status (13 October 2026): Phase 0 safety corrections are under review on [draft PR #1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1). The README describes the target V2 architecture, not features already delivered.** See [implementation tracker](docs/V2_IMPLEMENTATION_TRACKER.md), [Phase 0 audit](docs/PHASE0_AUDIT.md) and [development setup](docs/DEVELOPMENT.md).
+> **V2 development status (13 October 2026): Phase 0 safety corrections are under review on [draft PR #1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1). The README describes the target V2 architecture, not features already delivered.** See [implementation tracker](docs/V2_IMPLEMENTATION_TRACKER.md), [Phase 0 audit](docs/PHASE0_AUDIT.md), [development setup](docs/DEVELOPMENT.md), and the [phase-by-phase CI, review and user-merge protocol](docs/PHASE_WORKFLOW.md).
 
 ## Live Deployments 🚀
 - **Frontend App:** [https://chronomind-ai.vercel.app](https://chrono-mind-ai.vercel.app/) 

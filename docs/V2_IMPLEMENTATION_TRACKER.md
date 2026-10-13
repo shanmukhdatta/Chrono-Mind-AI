@@ -10,7 +10,7 @@
 | Phase | Area | State | Exit criterion |
 | --- | --- | --- | --- |
 | 0 | Legacy repository audit, safety, security | IN PROGRESS | No known critical destructive/auth defects, tests, startup and local review |
-| 1 | Modular development foundation, CI | NOT STARTED | Reproducible environment, structured packages, automated gates |
+| 1 | Modular development foundation, CI | IN PROGRESS | Reproducible environment, structured packages, automated gates |
 | 2 | PostgreSQL, authentication, Firestore migration | NOT STARTED | Reconciled, reversible migration with account ownership |
 | 3 | Tasks, recurrence and calendar | NOT STARTED | Full CRUD, recurrence exceptions and calendar integration |
 | 4 | Goals, preferences and prioritization | NOT STARTED | Durable goal-task relationships and documented scoring |
@@ -56,3 +56,42 @@
 ## Next milestone
 
 Complete remaining live Firebase smoke tests and CI/frontend verification; resolve documented legacy concurrency gaps before marking Phase 0 done.
+
+## Phase 1 in progress (2026-10-13)
+
+- Started separate branch `v2/phase1-foundation` from the unmerged Phase 0 branch. **Do not merge Phase 0 or Phase 1 automatically.**
+- Scope: shared configuration and lifecycle boundaries, local-date tests, CI quality gates, development documentation. See [Phase 1 implementation](PHASE1_IMPLEMENTATION.md).
+- Acceptance is **pending** green final-head CI, external local startup/CRUD verification, and reviewer sign-off.
+- Phase 0 remains IN PROGRESS and its Firebase/emulator/concurrency blockers are unchanged.
+
+**Phase 1 initial CI evidence:** both jobs passed on commit `f1844556`: backend 59 passed, frontend 3 passed, Vite build passed. [Push workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441356503) · [PR workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441410275). The final branch head, local test-account smoke checks, and review remain outstanding. No status promotion.
+
+**2026-10-13 external QA intake:** Windows Antigravity reported successful 60-test Python suite, 3-test frontend suite, both local servers and 11 authenticated Firebase task operations. A composite-index query failure was discovered; the local fix was not pushed. The Phase 1 branch adds an independently audited single-index query shape plus regression tests. See [PHASE1_QA_REPORT.md](PHASE1_QA_REPORT.md). Do not infer distributed concurrency or browser automation completion.
+
+## Phase 1 latest verification and review gate (2026-10-13)
+
+- Exact upstream implementation SHA: `96f256a29f541b9bb44148969e0304b4d745462f`.
+- GitHub [push](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443760055) and [PR](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38443766957) quality workflows: **success**; **63 backend tests**, **3 frontend tests**, compilation and Vite production build passed.
+- Second Antigravity report: verified clean fast-forward, preserved stash, **63 local backend**, **3 frontend**, working /health and Firebase authenticated task lifecycle, with day/range queries now free of the earlier composite-index failure. Treat this as **externally reported live integration evidence**, not GitHub CI Firebase coverage.
+- Browser UI interaction is unverified (Playwright driver download failed); human Chrome/Edge login/calendar inspection remains an acceptance action.
+- Phase 0's bad/revoked/expired token, multi-worker lease, simultaneous task-write, notification and non-destructive missed-task integration tests remain unverified. Those safeguards **must not** be inferred from successful CRUD or regression tests.
+- PR [#1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1) and PR [#2](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/2) remain in review. Phase 1 is **IN PROGRESS / AWAITING REVIEW**, not complete. No merge or deployment.
+
+## Phase 1 deep verification intake (2026-10-13)
+
+- Antigravity isolated harness reported expected missing/invalid/expired/revoked token responses; missing/mismatched administrator rejected; owner-only nightly job claim with **in-memory doubles**; optional missed-task candidate preservation; and notification writes only for apparently committed moves.
+- **Do not equate harness outcomes with real expired/revoked Firebase tokens, simultaneous cross-process Firestore transactions or actual notification delivery.** Live concurrent task writes and distributed lease tests are unverified. The TOCTOU task-write race is still present.
+- Browser guidance was provided, but interactive browser execution has not been verified.
+- Phase 1 cleanup removes **16 tracked Python bytecode files** and ensures subsequent compilation does not dirty Git; adds a CI guard and permanent simulated token-error branch tests.
+- A test password appeared in the external QA transcript. No credential is copied into Git; rotate it before reuse.
+- Maintain Phase 0 and Phase 1 as **IN PROGRESS / awaiting reviewer acceptance**. Do not merge/deploy/start Phase 2.
+
+**Manual UI checklist corrected:** frontend authentication is Google OAuth popup; the Antigravity email/password browser guide does not match the source. See [PHASE1_BROWSER_QA.md](PHASE1_BROWSER_QA.md). Checklist is PENDING actual interaction evidence.
+
+## Persistent development protocol — user approval (2026-10-14)
+
+The user owns PR merging. The assistant must implement phase-scoped code on GitHub, run/verify the automatic GitHub Actions CI bot, debug failures, and supply an exact Antigravity Windows verification prompt. After receiving satisfactory local evidence, the assistant explicitly recommends whether the user should merge, including remaining limitations. **The assistant must never merge a PR or auto-deploy under this agreement.** The user merges; the assistant checks `main` before beginning the next phase.
+
+See [PHASE_WORKFLOW.md](PHASE_WORKFLOW.md). The Phase 1 quality workflow is generalized to **ChronoMind V2 CI** for subsequent `v2/**` phases, with Python/Node tests and a tracked-file hygiene guard. Dependabot may propose weekly backend/frontend/workflow maintenance PRs; nothing auto-merges.
+
+Current stack: Phase 0 PR #1 -> `main`, Phase 1 PR #2 -> `v2/phase0-safety`. The user should merge #1 first (merge commit), then Phase 1 #2 can be retargeted to `main`. Both must preserve explicit known risks and may affect existing Vercel/Render production deployments if those services track `main`.

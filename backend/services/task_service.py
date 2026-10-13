@@ -79,22 +79,26 @@ def get_tasks(uid, date=None, status='all'):
 
     query = tasks_ref
     if date:
+        # An equality filter on date plus order_by(start_time) requires a
+        # composite Firestore index. Read the selected day using its automatic
+        # single-field index, then order only that day's results in Python.
         query = query.where('date', '==', date)
+    else:
+        # Preserve the existing server-side ordering for unfiltered requests.
+        query = query.order_by('start_time')
 
-    query = query.order_by('start_time')
     docs = query.get()
     tasks = []
-
     for doc in docs:
         task = serialize_task(doc)
-
         if status == 'completed' and not task.get('completed'):
             continue
         if status == 'incomplete' and task.get('completed'):
             continue
-
         tasks.append(task)
 
+    if date:
+        tasks.sort(key=lambda task: (task.get('start_time') or '', task['task_id']))
     return tasks
 
 def update_task(uid, task_id, updates):
@@ -277,11 +281,13 @@ def get_tasks_range(uid, date_from, date_to, status='all'):
     """Fetch tasks between two dates — used by CalendarMonth"""
     db = get_db()
     tasks_ref = db.collection('users').document(uid).collection('tasks')
+    # A date-range query with secondary start_time ordering otherwise needs a
+    # composite index. Firestore's date single-field index serves this bounded
+    # range; sort the returned results locally without broadening the query.
     docs = tasks_ref \
         .where('date', '>=', date_from) \
         .where('date', '<=', date_to) \
         .order_by('date') \
-        .order_by('start_time') \
         .get()
 
     tasks = []
@@ -292,4 +298,7 @@ def get_tasks_range(uid, date_from, date_to, status='all'):
         if status == 'incomplete' and task.get('completed'):
             continue
         tasks.append(task)
+    tasks.sort(key=lambda task: (
+        task.get('date') or '', task.get('start_time') or '', task['task_id']
+    ))
     return tasks

@@ -13,6 +13,7 @@ import { RescheduleBanner } from '../components/RescheduleBanner'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import api from '../lib/api'
+import { localDateKey } from '../lib/date'
 
 function DemoBanner() {
   const { user } = useAuthStore()
@@ -57,7 +58,7 @@ export default function Dashboard() {
   // Daily briefing — fires only once today, only after tasks actually loaded
   useEffect(() => {
     if (briefingFiredRef.current) return
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     if (selectedDate !== today) return
     if (isLoading) return
     if (!tasksLoadedRef.current) return
@@ -89,8 +90,8 @@ export default function Dashboard() {
     setSelectedDate(format(dir > 0 ? addDays(d, 1) : subDays(d, 1), 'yyyy-MM-dd'))
   }
 
-  const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
-  const isToday = selectedDate === new Date().toISOString().split('T')[0]
+  const goToday = () => setSelectedDate(localDateKey())
+  const isToday = selectedDate === localDateKey()
 
   const filtered = tasks.filter(t =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase())

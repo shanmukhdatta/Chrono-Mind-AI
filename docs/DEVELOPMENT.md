@@ -28,7 +28,7 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env` privately with your own values; service account file path should point to an actual readable key JSON file **outside the repository**. Set process environment variables (the backend does not automatically call `load_dotenv`):
+Edit `backend/.env` privately with your own values; service account file path should point to an actual readable key JSON file **outside the repository**. Phase 1 loads `backend/.env` during backend configuration initialization (existing process environment variables take precedence). For explicit PowerShell configuration, set environment variables as follows:
 
 ```powershell
 $env:FIREBASE_SERVICE_ACCOUNT_PATH = "C:\path\outside\repo\firebase-service-account.json"
@@ -89,3 +89,11 @@ Expected: Vite reports local address, typically `http://localhost:5173`. Test lo
 ### Known testing boundaries
 
 Running `pytest` alone cannot validate live Firebase credentials, network-dependent LLM behavior, browser integrations or multi-instance concurrency. Those must be separately demonstrated in a test environment.
+
+## Phase 1 automated quality gates
+
+Run `python -m pytest -q` in `backend/`, plus `npm test` and `npm run build` in `frontend/`. The new GitHub Actions workflow `.github/workflows/phase1-quality.yml` runs these checks on the Phase 1 branch and on PRs to Phase 0/main. Frontend tests pin `TZ=Asia/Kolkata` to exercise calendar-day boundaries. These checks do not replace the separate Firebase emulator and Antigravity test-account checks pending from Phase 0.
+
+## GitHub CI bot and merge protocol
+
+All V2 phase PRs and V2 branch pushes run the automated GitHub Actions quality workflow defined in `.github/workflows/phase1-quality.yml` (shown as **ChronoMind V2 CI**). It performs real dependency installation, backend pytest/compile, frontend Vitest/build, and rejects committed generated Python artifacts or private configuration files by filename. It does **not** touch production services or verify the full browser/Firebase integration. Dependabot may suggest weekly dependency updates in separate PRs, but never merges automatically. Follow [PHASE_WORKFLOW.md](PHASE_WORKFLOW.md): after CI and Antigravity verification, **the user alone decides and performs the merge**.
