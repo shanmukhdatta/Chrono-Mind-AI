@@ -65,3 +65,5 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 - Phase 0 remains IN PROGRESS and its Firebase/emulator/concurrency blockers are unchanged.
 
 **Phase 1 initial CI evidence:** both jobs passed on commit `f1844556`: backend 59 passed, frontend 3 passed, Vite build passed. [Push workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441356503) · [PR workflow](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/38441410275). The final branch head, local test-account smoke checks, and review remain outstanding. No status promotion.
+
+**2026-10-13 external QA intake:** Windows Antigravity reported successful 60-test Python suite, 3-test frontend suite, both local servers and 11 authenticated Firebase task operations. A composite-index query failure was discovered; the local fix was not pushed. The Phase 1 branch adds an independently audited single-index query shape plus regression tests. See [PHASE1_QA_REPORT.md](PHASE1_QA_REPORT.md). Do not infer distributed concurrency or browser automation completion.

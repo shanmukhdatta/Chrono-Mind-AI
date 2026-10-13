@@ -44,3 +44,7 @@ Use `CHRONOMIND_DISABLE_LEGACY_SCHEDULER=1` in test/local environments. Run fron
 - Backend pinned Python 3.11: **59 passed, 1 pytest-asyncio deprecation warning**; `compileall` passed.
 - Frontend Node 20: **3 tests passed**, `npm ci` and `npm run build` passed. Vite reported bundle-size warning; dependency/runner deprecation notices were non-fatal.
 - This is **initial-code-commit evidence**; a subsequent evidence/smoke-test commit must have its own final-head CI verified before approval.
+
+## Antigravity QA finding and follow-up
+
+The user-provided Windows QA report recorded 60/60 backend tests, 3/3 frontend tests, working HTTP startup, and 11/11 live test-Firebase operations after a **local, uncommitted** Firestore index workaround. See [Phase 1 QA intake](PHASE1_QA_REPORT.md). The GitHub branch now includes a reviewed index-free query implementation and tests; that new commit must pass CI and be rechecked against live Firebase. Browser automation, cross-worker concurrency, token expiry/revocation, and review sign-off remain outstanding.
