@@ -1,0 +1,59 @@
+name: Phase 0 Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [v2/phase0-safety]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal pure-test dependencies
+        run: python -m pip install "pytest==8.2.0" "pydantic==2.7.0"
+      - name: Validate pure scheduling and task schemas
+        working-directory: backend
+        run: python -m pytest -q tests/test_missed_task_policy.py tests/test_slot_planner.py tests/test_task_validation.py
+      - name: Compile Python sources
+        run: python -m compileall -q backend
+
+  backend-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend requirements
+        working-directory: backend
+        run: python -m pip install -r requirements.txt
+      - name: Run API, authorization and job-claim tests
+        working-directory: backend
+        env:
+          CHRONOMIND_DISABLE_LEGACY_SCHEDULER: '1'
+        run: python -m pytest -q
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build production frontend
+        working-directory: frontend
+        run: npm run build
