@@ -13,7 +13,7 @@ Updated 2026-10-13. Scope: actual `v2/phase0-safety` branch. **Not a production-
 | 7 | API validation, serialization and timezones | PATCHED: strict task schema/PATCH validation, 15-minute minimum, date-only overlap checks, UTC ISO timestamp output, date range/query validation. |
 | 8 | Recurrence | BROKEN/INCOMPLETE: helper `generate_recurring_instances` exists but no create/update route invokes it; series editing, conflict handling, future generation are absent. UI explicitly labels recurrence as a preview. Phase 3 implementation required. |
 | 9 | Backend and frontend startup | Documented in DEVELOPMENT.md. Environment-specific startup not run with real secrets here. |
-| 10 | Automated tests | 19 pure regression tests passed against exact blob-matched sources; additional test files and GitHub Actions added but not yet verified green. |
+| 10 | Automated tests | 19 pure regression tests passed against exact blob-matched sources; GitHub Actions subsequently confirmed 44 backend tests, 22 focused tests and frontend build (run #38431087470). |
 | 11 | Remaining bugs + migration | Documented here and in V2_MIGRATION.md. |
 | 12 | Persistent tracking | V2_IMPLEMENTATION_TRACKER.md, TEST_RESULTS.md, development and migration guides created. |
 
@@ -32,8 +32,8 @@ Updated 2026-10-13. Scope: actual `v2/phase0-safety` branch. **Not a production-
 
 ## Required safety gates before Phase 0 approval
 
-- [ ] Full Python dependency installation and `pytest` suite green.
-- [ ] Frontend `npm ci && npm run build` green.
+- [x] Full Python dependency installation and `pytest` suite green on GitHub Actions (44 passed).
+- [x] Frontend `npm ci && npm run build` green on GitHub Actions.
 - [ ] Startup: backend /health and frontend dev server.
 - [ ] Live/emulator Firebase auth: valid, invalid, expired, revoked token and missing admin UID.
 - [ ] Emulator concurrent tasks and multi-worker nightly lease claim.
