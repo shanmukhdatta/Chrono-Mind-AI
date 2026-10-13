@@ -21,3 +21,11 @@ backend/env/
 
 # Firebase
 serviceAccountKey.json
+
+# Phase 0: private local configuration and service-account exports
+**/.env.local
+**/.env.*.local
+**/*service-account*.json
+**/serviceAccountKey.json
+**/.venv/
+**/node_modules/
