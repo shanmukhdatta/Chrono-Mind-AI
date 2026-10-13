@@ -1,5 +1,7 @@
 import logging
-from fastapi import APIRouter, Depends, Query
+from datetime import date as CalendarDate
+from typing import Literal
+from fastapi import APIRouter, Depends, Query, HTTPException
 
 logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
@@ -29,20 +31,31 @@ async def get_task_stats(current_user: dict = Depends(get_current_user)):
 # ── TASK CRUD ──
 @router.get("/tasks")
 async def list_tasks(
-    date: str = Query(None),
-    date_from: str = Query(None),
-    date_to: str = Query(None),
-    status: str = Query('all'),
+    date: CalendarDate | None = Query(None),
+    date_from: CalendarDate | None = Query(None),
+    date_to: CalendarDate | None = Query(None),
+    status: Literal["all", "completed", "incomplete"] = Query("all"),
     current_user: dict = Depends(get_current_user)
 ):
+    if (date_from is None) != (date_to is None):
+        raise HTTPException(status_code=422, detail="date_from and date_to must be provided together")
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="date_from must not exceed date_to")
+    if date is not None and date_from is not None:
+        raise HTTPException(status_code=422, detail="Use either date or a date range")
     try:
-        if date_from and date_to:
-            tasks = get_tasks_range(current_user['uid'], date_from, date_to, status)
+        if date_from is not None:
+            tasks = get_tasks_range(
+                current_user["uid"], date_from.isoformat(), date_to.isoformat(), status
+            )
         else:
-            tasks = get_tasks(current_user['uid'], date=date, status=status)
+            tasks = get_tasks(
+                current_user["uid"], date=date.isoformat() if date else None, status=status
+            )
         return StandardResponse.success_response(tasks)
-    except Exception as e:
-        return JSONResponse(status_code=500, content=StandardResponse.error_response(str(e)))
+    except Exception:
+        logger.exception("Could not load tasks")
+        return JSONResponse(status_code=500, content=StandardResponse.error_response("Internal server error"))
 
 @router.post("/tasks")
 async def create_new_task(body: TaskCreate, current_user: dict = Depends(get_current_user)):

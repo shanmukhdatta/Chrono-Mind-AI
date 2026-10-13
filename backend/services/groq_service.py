@@ -1,8 +1,9 @@
 from groq import Groq
 import os
-from datetime import date, datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+IST = ZoneInfo("Asia/Kolkata")
 
 SYSTEM_PROMPT = """You are ChronoMind, an AI scheduling assistant embedded inside a day planner app for Indian engineering college students.
 
@@ -47,8 +48,9 @@ NEVER make up tasks. NEVER discuss topics outside scheduling. NEVER include mark
 """
 
 def chat(user_message: str, history: list = []) -> str:
-    today = date.today().isoformat()
-    current_time = datetime.now().strftime('%H:%M')
+    now = datetime.now(IST)
+    today = now.date().isoformat()
+    current_time = now.strftime('%H:%M')
 
     system = SYSTEM_PROMPT.format(today=today, current_time=current_time)
 
@@ -61,6 +63,10 @@ def chat(user_message: str, history: list = []) -> str:
 
     messages.append({"role": "user", "content": user_message})
 
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("LLM provider is not configured")
+    client = Groq(api_key=api_key)
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,

@@ -3,6 +3,8 @@
 **AI-Powered Day Planner for College Students**  
 Built with FastAPI · LangGraph · Groq · React · Firebase
 
+> **V2 development status (13 October 2026): Phase 0 safety corrections are under review on [draft PR #1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1). The README describes the target V2 architecture, not features already delivered.** See [implementation tracker](docs/V2_IMPLEMENTATION_TRACKER.md), [Phase 0 audit](docs/PHASE0_AUDIT.md) and [development setup](docs/DEVELOPMENT.md).
+
 ## Live Deployments 🚀
 - **Frontend App:** [https://chronomind-ai.vercel.app](https://chrono-mind-ai.vercel.app/) 
 - **Backend API Docs:** [https://chronomind-backend.onrender.com/docs](https://chronomind-backend.onrender.com/docs) 
@@ -27,7 +29,7 @@ The original ChronoMind already provides:
 - Voice input
 - AI scheduling assistant
 - Task completion tracking
-- Recurring tasks
+- Recurrence rules (saved only; future instances not automatically created in legacy app)
 - Notifications
 - Focus timer
 - A LangGraph nightly rescheduling workflow
@@ -47,7 +49,7 @@ assign slots
         ↓
 write changes
         ↓
-delete low-priority unfinished tasks
+[destructive deletion removed in Phase 0 safety branch]
         ↓
 notify user
 ```

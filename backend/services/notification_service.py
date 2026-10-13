@@ -1,6 +1,6 @@
 from firebase_admin import firestore
 from .firebase_service import get_db
-from datetime import datetime
+from datetime import datetime, timezone
 
 def create_notification(uid, notif_type, message, task_ids=None):
     db = get_db()
@@ -21,10 +21,10 @@ def _serialize_notif(doc):
     notif = doc.to_dict()
     notif['notif_id'] = doc.id
     ca = notif.get('created_at')
-    if ca and hasattr(ca, 'isoformat'):
-        notif['created_at'] = ca.isoformat()
-    elif ca and hasattr(ca, 'timestamp'):
-        notif['created_at'] = datetime.fromtimestamp(ca.timestamp()).isoformat()
+    if isinstance(ca, datetime):
+        if ca.tzinfo is None:
+            ca = ca.replace(tzinfo=timezone.utc)
+        notif['created_at'] = ca.astimezone(timezone.utc).isoformat()
     return notif
 
 def get_notifications(uid):
