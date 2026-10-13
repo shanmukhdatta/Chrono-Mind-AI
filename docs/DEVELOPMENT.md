@@ -93,3 +93,7 @@ Running `pytest` alone cannot validate live Firebase credentials, network-depend
 ## Phase 1 automated quality gates
 
 Run `python -m pytest -q` in `backend/`, plus `npm test` and `npm run build` in `frontend/`. The new GitHub Actions workflow `.github/workflows/phase1-quality.yml` runs these checks on the Phase 1 branch and on PRs to Phase 0/main. Frontend tests pin `TZ=Asia/Kolkata` to exercise calendar-day boundaries. These checks do not replace the separate Firebase emulator and Antigravity test-account checks pending from Phase 0.
+
+## GitHub CI bot and merge protocol
+
+All V2 phase PRs and V2 branch pushes run the automated GitHub Actions quality workflow defined in `.github/workflows/phase1-quality.yml` (shown as **ChronoMind V2 CI**). It performs real dependency installation, backend pytest/compile, frontend Vitest/build, and rejects committed generated Python artifacts or private configuration files by filename. It does **not** touch production services or verify the full browser/Firebase integration. Dependabot may suggest weekly dependency updates in separate PRs, but never merges automatically. Follow [PHASE_WORKFLOW.md](PHASE_WORKFLOW.md): after CI and Antigravity verification, **the user alone decides and performs the merge**.

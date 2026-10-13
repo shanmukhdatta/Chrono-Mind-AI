@@ -87,3 +87,11 @@ Complete remaining live Firebase smoke tests and CI/frontend verification; resol
 - Maintain Phase 0 and Phase 1 as **IN PROGRESS / awaiting reviewer acceptance**. Do not merge/deploy/start Phase 2.
 
 **Manual UI checklist corrected:** frontend authentication is Google OAuth popup; the Antigravity email/password browser guide does not match the source. See [PHASE1_BROWSER_QA.md](PHASE1_BROWSER_QA.md). Checklist is PENDING actual interaction evidence.
+
+## Persistent development protocol — user approval (2026-10-14)
+
+The user owns PR merging. The assistant must implement phase-scoped code on GitHub, run/verify the automatic GitHub Actions CI bot, debug failures, and supply an exact Antigravity Windows verification prompt. After receiving satisfactory local evidence, the assistant explicitly recommends whether the user should merge, including remaining limitations. **The assistant must never merge a PR or auto-deploy under this agreement.** The user merges; the assistant checks `main` before beginning the next phase.
+
+See [PHASE_WORKFLOW.md](PHASE_WORKFLOW.md). The Phase 1 quality workflow is generalized to **ChronoMind V2 CI** for subsequent `v2/**` phases, with Python/Node tests and a tracked-file hygiene guard. Dependabot may propose weekly backend/frontend/workflow maintenance PRs; nothing auto-merges.
+
+Current stack: Phase 0 PR #1 -> `main`, Phase 1 PR #2 -> `v2/phase0-safety`. The user should merge #1 first (merge commit), then Phase 1 #2 can be retargeted to `main`. Both must preserve explicit known risks and may affect existing Vercel/Render production deployments if those services track `main`.
