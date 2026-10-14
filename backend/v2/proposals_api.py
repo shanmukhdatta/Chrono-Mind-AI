@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from middleware.auth import get_current_user
 from .calendar_api import conflict
 from .db import get_or_create_user, get_session
-from .models import FixedEvent, PlanProposal, Preference, ScheduleBlock, Task, User
+from .models import FixedEvent, PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, User
 from .planning_api import get_preview
 
 router = APIRouter(prefix="/api/v2/plans", tags=["v2-approvals"])
@@ -23,6 +23,11 @@ router = APIRouter(prefix="/api/v2/plans", tags=["v2-approvals"])
 
 class ProposalRequest(BaseModel):
     days: int = Field(default=7, ge=1, le=14)
+
+
+class MoveBlockRequest(BaseModel):
+    block_index: int = Field(ge=0, le=499)
+    starts_at: datetime
 
 
 def current_prefs(db: Session, uid: str) -> dict:
@@ -59,6 +64,7 @@ def present(plan: PlanProposal) -> dict:
         "approved_at": plan.approved_at.isoformat() if plan.approved_at else None,
         "blocks": plan.proposed_blocks,
         "unscheduled": plan.unscheduled,
+        "decision_trace": plan.planning_trace,
         "committed_block_ids": plan.committed_block_ids,
     }
 
@@ -99,8 +105,7 @@ def verify_candidate(db: Session, uid: str, plan: PlanProposal, now: datetime):
              for row in db.scalars(select(FixedEvent).where(FixedEvent.owner_uid == uid)).all()]
     occupied_by_task = defaultdict(int)
     for block in existing:
-        start = ensure_aware(block.starts_at)
-        end = ensure_aware(block.ends_at)
+        start, end = ensure_aware(block.starts_at), ensure_aware(block.ends_at)
         if end > now:
             occupied_by_task[block.task_id] += int((end - max(start, now)).total_seconds() // 60)
 
@@ -178,9 +183,16 @@ def create_proposal(
         unscheduled=preview["unscheduled"],
         preferences_snapshot=current_prefs(db, uid),
         task_versions=versions,
+        planning_trace=preview.get("decision_trace", {}),
         committed_block_ids=[],
     )
     db.add(plan)
+    db.flush()
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="proposed",
+        reason_codes=["PRIORITY_SCORE", "CONSTRAINT_CHECKED", "USER_REVIEW_REQUIRED"],
+        before_blocks=[], after_blocks=preview["blocks"],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -194,9 +206,66 @@ def list_proposals(user: dict = Depends(get_current_user), db: Session = Depends
     return [present(row) for row in rows]
 
 
+@router.get("/{plan_id}/history")
+def proposal_history(plan_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
+    uid = user["uid"]
+    read_proposal(db, uid, plan_id)
+    records = db.scalars(select(PlanningDecisionLog).where(
+        PlanningDecisionLog.owner_uid == uid, PlanningDecisionLog.proposal_id == plan_id
+    ).order_by(PlanningDecisionLog.recorded_at, PlanningDecisionLog.id)).all()
+    return [
+        {
+            "action": record.action, "reason_codes": record.reason_codes,
+            "before_blocks": record.before_blocks, "after_blocks": record.after_blocks,
+            "recorded_at": record.recorded_at,
+        }
+        for record in records
+    ]
+
+
 @router.get("/{plan_id}")
 def get_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     return present(read_proposal(db, user["uid"], plan_id))
+
+
+@router.put("/{plan_id}/blocks")
+def move_proposed_block(
+    plan_id: str, body: MoveBlockRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """A human may reposition one pending session; no calendar write occurs."""
+    uid = user["uid"]
+    lock_owner(db, uid)
+    proposal = read_proposal(db, uid, plan_id, lock=True)
+    if proposal.status != "pending":
+        raise HTTPException(409, "Only pending proposals can be edited")
+    original = list(proposal.proposed_blocks)
+    if body.block_index >= len(original):
+        raise HTTPException(404, "Proposed session not found")
+    if body.starts_at.tzinfo is None or body.starts_at.utcoffset() is None:
+        raise HTTPException(422, "Session start requires an explicit timezone offset")
+    now = datetime.now(timezone.utc)
+    begins = body.starts_at.astimezone(timezone.utc)
+    if begins > ensure_aware(proposal.created_at) + timedelta(days=14):
+        raise HTTPException(409, "Move is outside the 14-day horizon")
+    edited = [dict(row) for row in original]
+    row = edited[body.block_index]
+    length = datetime.fromisoformat(row["ends_at"]) - datetime.fromisoformat(row["starts_at"])
+    if length.total_seconds() <= 0:
+        raise HTTPException(409, "Corrupted original proposal")
+    row["starts_at"] = begins.isoformat()
+    row["ends_at"] = (begins + length).isoformat()
+    proposal.proposed_blocks = edited
+    verify_candidate(db, uid, proposal, now)
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=proposal.id, action="edited",
+        reason_codes=["USER_MOVED_SESSION", "CONSTRAINT_REVALIDATED"],
+        before_blocks=original, after_blocks=edited,
+    ))
+    db.commit()
+    db.refresh(proposal)
+    return present(proposal)
 
 
 @router.post("/{plan_id}/approve")
@@ -217,6 +286,11 @@ def approve_proposal(plan_id: str, user: dict = Depends(get_current_user), db: S
     plan.committed_block_ids = ids
     plan.status = "approved"
     plan.approved_at = now
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="approved",
+        reason_codes=["USER_APPROVED", "CONSTRAINT_REVALIDATED"],
+        before_blocks=[], after_blocks=plan.proposed_blocks,
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -230,6 +304,11 @@ def reject_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Se
     if plan.status != "pending":
         raise HTTPException(409, "Only pending proposals can be rejected")
     plan.status = "rejected"
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="rejected",
+        reason_codes=["USER_REJECTED"],
+        before_blocks=[], after_blocks=[],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -255,6 +334,11 @@ def undo_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Sess
             raise HTTPException(409, "Plan blocks were modified; cannot undo automatically")
         db.delete(block)
     plan.status = "undone"
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="undone",
+        reason_codes=["USER_REQUESTED_UNDO", "ORIGINAL_BLOCKS_INTACT"],
+        before_blocks=plan.proposed_blocks, after_blocks=[],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)

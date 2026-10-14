@@ -3,7 +3,7 @@ from datetime import datetime, date, time, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
-    CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON,
+    CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON,
     String, Text, Time, UniqueConstraint, func
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -45,6 +45,7 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    splittable: Mapped[bool] = mapped_column(default=True, nullable=False)
     importance: Mapped[str] = mapped_column(String(24), default="important", nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False)
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -68,7 +69,7 @@ class ScheduleBlock(Base):
     task_id: Mapped[str] = mapped_column(ForeignKey("v2_tasks.id", ondelete="CASCADE"), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    source: Mapped[str] = mapped_column(String(32), default="manual", nullable=False)
+    source: Mapped[str] = mapped_column(String(64), default="manual", nullable=False)
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="schedule_order"),
         Index("ix_v2_blocks_owner_start", "owner_uid", "starts_at"),
@@ -111,6 +112,7 @@ class PlanProposal(Base):
     proposed_blocks: Mapped[list] = mapped_column(JSON, nullable=False)
     unscheduled: Mapped[list] = mapped_column(JSON, nullable=False)
     task_versions: Mapped[dict] = mapped_column(JSON, nullable=False)
+    planning_trace: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     preferences_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     committed_block_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -241,3 +243,33 @@ class TaskDependency(Base):
         CheckConstraint("task_id <> depends_on_id", name="task_no_self_dependency"),
         Index("ix_v2_dependency_owner_task", "owner_uid", "task_id"),
     )
+
+
+class PlanningDecisionLog(Base):
+    """User-owned append-only decision records; never store raw LLM prompts."""
+    __tablename__ = "v2_planning_decision_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    proposal_id: Mapped[str] = mapped_column(ForeignKey("v2_plan_proposals.id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_codes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    before_blocks: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    after_blocks: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (Index("ix_v2_decision_owner_date", "owner_uid", "recorded_at"),)
+
+
+class AssistantMetric(Base):
+    """Token/latency metadata only. Never store raw prompts or assistant replies."""
+    __tablename__ = "v2_assistant_metrics"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    tier: Mapped[str] = mapped_column(String(24), nullable=False)
+    mode: Mapped[str] = mapped_column(String(24), nullable=False)
+    model_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    estimated_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (Index("ix_v2_llm_metrics_owner_date", "owner_uid", "recorded_at"),)

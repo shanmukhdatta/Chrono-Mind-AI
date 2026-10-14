@@ -12,6 +12,8 @@ class PlanningTask:
     importance: str = "important"
     deadline_at: datetime | None = None
     blocked_reason: str | None = None
+    priority_score: int = 0
+    splittable: bool = True
 
 
 @dataclass(frozen=True)
@@ -123,6 +125,7 @@ def preview_schedule(
     unscheduled = []
 
     ordered = sorted(tasks, key=lambda t: (
+        -t.priority_score,
         0 if t.importance == "important" else 1,
         t.deadline_at or datetime.max.replace(tzinfo=zone),
         t.task_id,
@@ -131,6 +134,12 @@ def preview_schedule(
     for task in ordered:
         remaining = task.remaining_minutes
         if remaining <= 0:
+            continue
+        if not task.splittable and remaining > 90:
+            unscheduled.append(UnscheduledTask(
+                task.task_id, task.title, remaining,
+                "This task is marked non-splittable and exceeds the maximum single-session duration",
+            ))
             continue
         if task.blocked_reason:
             unscheduled.append(UnscheduledTask(task.task_id, task.title, remaining, task.blocked_reason))
@@ -159,6 +168,8 @@ def preview_schedule(
                 for open_at, close_at in _free_windows(day_start, day_end, occupied):
                     available = int((close_at - open_at).total_seconds() // 60)
                     length = min(90, remaining, daily_room, available)
+                    if not task.splittable and length != remaining:
+                        continue
                     if length < min(15, remaining):
                         continue
                     if preferences.preferred_hour is None:

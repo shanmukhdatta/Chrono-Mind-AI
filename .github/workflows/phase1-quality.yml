@@ -62,6 +62,51 @@ jobs:
           CHRONOMIND_DISABLE_LEGACY_SCHEDULER: '1'
         run: python -m pytest -q
 
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: chronomind
+          POSTGRES_USER: chronomind
+          POSTGRES_PASSWORD: local_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chronomind -d chronomind"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://chronomind:local_ci_only@localhost:5432/chronomind
+      LANGGRAPH_STRICT_MSGPACK: 'true'
+      CHRONOMIND_DISABLE_LEGACY_SCHEDULER: '1'
+      CHRONOMIND_LIVE_PG_TEST: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: python -m pip install -r requirements.txt
+      - name: Apply every PostgreSQL Alembic revision
+        working-directory: backend
+        run: python -m alembic -c alembic.ini upgrade head
+      - name: Initialize durable graph checkpoint tables
+        working-directory: backend
+        run: python -m scripts.init_langgraph_checkpoints
+      - name: Exercise approval transactions and checkpoint recovery on PostgreSQL
+        working-directory: backend
+        run: python -m pytest -q tests/test_v2_live_postgres.py
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 15
