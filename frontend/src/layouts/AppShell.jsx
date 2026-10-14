@@ -10,7 +10,8 @@ import { FocusTimer } from '../components/FocusTimer'
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/calendar',  label: 'Calendar',  icon: Calendar },
+  { path: '/calendar',  label: 'Calendar (V1)',  icon: Calendar },
+  { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
   { path: '/goals',     label: 'Goals',     icon: Target },
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
