@@ -11,7 +11,8 @@ from .db import get_session
 from .models import BehaviorConsent, BehaviorEvent, FixedEvent, Goal, Preference, ScheduleBlock, Task, TaskDependency
 from .priority import score_task
 from .personalization import preferred_work_hour
-from .planner import BusyInterval, PlanningPreferences, PlanningTask, preview_schedule
+from .planner import BusyInterval, PlanningPreferences, PlanningTask
+from .replanning import choose_schedule
 
 router = APIRouter(prefix="/api/v2/planning", tags=["v2-planning"])
 
@@ -93,11 +94,12 @@ def get_preview(
         )
         for row in rows
     ]
-    suggestion = preview_schedule(tasks, occupied, opts, generated, horizon_days=days)
+    suggestion, decision_trace = choose_schedule(tasks, occupied, opts, generated, days)
     return {
         "generated_at": generated.isoformat(),
         "timezone": opts.timezone,
         "changes_committed": False,
+        "decision_trace": decision_trace,
         "personalization": {
             "applied": preferred is not None,
             "preferred_hour": preferred,

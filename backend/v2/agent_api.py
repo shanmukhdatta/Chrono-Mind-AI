@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from middleware.auth import get_current_user
 from .agent_graph import build_planner_graph
 from .db import engine, get_or_create_user
-from .models import PlanProposal, Task, User
+from .models import PlanProposal, PlanningDecisionLog, Task, User
 from .planning_api import get_preview
 from .proposals_api import current_prefs
 
@@ -61,9 +61,16 @@ def persist_proposal(uid: str, run_id: str, preview: dict) -> str:
             id=run_id, owner_uid=uid, proposed_blocks=preview["blocks"],
             unscheduled=preview["unscheduled"], task_versions=versions,
             preferences_snapshot=current_prefs(db, uid),
+            planning_trace=preview.get("decision_trace", {}),
             committed_block_ids=[],
         )
         db.add(proposal)
+        db.flush()
+        db.add(PlanningDecisionLog(
+            owner_uid=uid, proposal_id=run_id, action="proposed",
+            reason_codes=["AGENT_GENERATED", "VALIDATED", "HUMAN_REVIEW_REQUIRED"],
+            before_blocks=[], after_blocks=preview["blocks"],
+        ))
         db.commit()
         return run_id
 

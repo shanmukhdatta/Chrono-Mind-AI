@@ -112,6 +112,7 @@ class PlanProposal(Base):
     proposed_blocks: Mapped[list] = mapped_column(JSON, nullable=False)
     unscheduled: Mapped[list] = mapped_column(JSON, nullable=False)
     task_versions: Mapped[dict] = mapped_column(JSON, nullable=False)
+    planning_trace: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     preferences_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     committed_block_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -242,3 +243,17 @@ class TaskDependency(Base):
         CheckConstraint("task_id <> depends_on_id", name="task_no_self_dependency"),
         Index("ix_v2_dependency_owner_task", "owner_uid", "task_id"),
     )
+
+
+class PlanningDecisionLog(Base):
+    """User-owned append-only decision records; never store raw LLM prompts."""
+    __tablename__ = "v2_planning_decision_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    proposal_id: Mapped[str] = mapped_column(ForeignKey("v2_plan_proposals.id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_codes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    before_blocks: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    after_blocks: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (Index("ix_v2_decision_owner_date", "owner_uid", "recorded_at"),)
