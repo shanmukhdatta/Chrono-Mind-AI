@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
 from .db import get_session
-from .models import FixedEvent, Preference, ScheduleBlock, Task, TaskDependency
+from .models import BehaviorConsent, BehaviorEvent, FixedEvent, Preference, ScheduleBlock, Task, TaskDependency
+from .personalization import preferred_work_hour
 from .planner import BusyInterval, PlanningPreferences, PlanningTask, preview_schedule
 
 router = APIRouter(prefix="/api/v2/planning", tags=["v2-planning"])
@@ -28,12 +29,24 @@ def get_preview(
     db: Session = Depends(get_session),
 ):
     uid = user["uid"]
+    consent = db.get(BehaviorConsent, uid)
+    preferred = None
+    if consent is not None and consent.enabled:
+        signals = db.scalars(select(BehaviorEvent).where(
+            BehaviorEvent.owner_uid == uid, BehaviorEvent.kind == "focus_completed"
+        ).order_by(BehaviorEvent.happened_at.desc()).limit(90)).all()
+        preferred = preferred_work_hour(
+            [(event.hour_of_day, event.duration_seconds) for event in signals]
+        )
     pref = db.get(Preference, uid)
     if pref is None:
         # Read-only preview never provisions a database user or changes preferences.
-        opts = PlanningPreferences("Asia/Kolkata", time(8), time(22), 480, 10)
+        opts = PlanningPreferences("Asia/Kolkata", time(8), time(22), 480, 10, preferred)
     else:
-        opts = PlanningPreferences(pref.timezone, pref.work_start, pref.work_end, pref.max_daily_minutes, pref.min_break_minutes)
+        opts = PlanningPreferences(
+            pref.timezone, pref.work_start, pref.work_end,
+            pref.max_daily_minutes, pref.min_break_minutes, preferred
+        )
 
     rows = db.scalars(select(Task).where(Task.owner_uid == uid, Task.status == "pending")).all()
     blocks = db.scalars(select(ScheduleBlock).where(ScheduleBlock.owner_uid == uid)).all()
@@ -76,6 +89,11 @@ def get_preview(
         "generated_at": generated.isoformat(),
         "timezone": opts.timezone,
         "changes_committed": False,
+        "personalization": {
+            "applied": preferred is not None,
+            "preferred_hour": preferred,
+            "method": "opt-in focus-hour heuristic" if preferred is not None else "off or insufficient samples",
+        },
         "blocks": [
             {
                 "task_id": block.task_id,

@@ -28,6 +28,7 @@ class PlanningPreferences:
     work_end: time
     max_daily_minutes: int
     min_break_minutes: int
+    preferred_hour: int | None = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,8 @@ def preview_schedule(
         raise ValueError("Work window must end after it begins")
     if preferences.max_daily_minutes <= 0 or preferences.min_break_minutes < 0:
         raise ValueError("Invalid daily limits")
+    if preferences.preferred_hour is not None and not 0 <= preferences.preferred_hour <= 23:
+        raise ValueError("Preferred hour must be in 0..23")
     zone = ZoneInfo(preferences.timezone)
     local_now = now.astimezone(zone)
     occupied = list(existing)
@@ -110,7 +113,10 @@ def preview_schedule(
             raise ValueError("Busy interval must have positive duration")
     if preferences.min_break_minutes:
         occupied.extend(
-            BusyInterval(item.end, item.end + timedelta(minutes=preferences.min_break_minutes))
+            BusyInterval(
+                item.start - timedelta(minutes=preferences.min_break_minutes),
+                item.end + timedelta(minutes=preferences.min_break_minutes),
+            )
             for item in existing if item.counts_as_work
         )
     blocks = []
@@ -149,21 +155,35 @@ def preview_schedule(
                 daily_room = preferences.max_daily_minutes - day_used
                 if daily_room <= 0:
                     break
-                candidate = None
+                candidates = []
                 for open_at, close_at in _free_windows(day_start, day_end, occupied):
                     available = int((close_at - open_at).total_seconds() // 60)
                     length = min(90, remaining, daily_room, available)
-                    if length >= min(15, remaining):
-                        candidate = (open_at, length)
+                    if length < min(15, remaining):
+                        continue
+                    if preferences.preferred_hour is None:
+                        starts = open_at
+                        penalty = 0
+                    else:
+                        target = datetime.combine(
+                            day, time(preferences.preferred_hour), zone
+                        )
+                        latest = close_at - timedelta(minutes=length)
+                        starts = max(open_at, min(target, latest))
+                        penalty = abs((starts - target).total_seconds())
+                    candidates.append((penalty, starts, length))
+                    if preferences.preferred_hour is None:
                         break
-                if candidate is None:
+                if not candidates:
                     break
-                starts_at, minutes = candidate
+                _, starts_at, minutes = min(candidates)
                 ends_at = starts_at + timedelta(minutes=minutes)
                 blocks.append(ProposedBlock(task.task_id, task.title, starts_at, ends_at, minutes))
                 occupied.append(BusyInterval(starts_at, ends_at, counts_as_work=True))
                 if preferences.min_break_minutes:
-                    occupied.append(BusyInterval(ends_at, ends_at + timedelta(minutes=preferences.min_break_minutes)))
+                    padding = timedelta(minutes=preferences.min_break_minutes)
+                    occupied.append(BusyInterval(starts_at - padding, starts_at))
+                    occupied.append(BusyInterval(ends_at, ends_at + padding))
                 remaining -= minutes
         if remaining:
             unscheduled.append(UnscheduledTask(
