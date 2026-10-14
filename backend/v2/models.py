@@ -119,3 +119,15 @@ class PlanProposal(Base):
         CheckConstraint("status IN ('pending','approved','rejected','undone')", name="proposal_status"),
         Index("ix_v2_proposals_owner_created", "owner_uid", "created_at"),
     )
+
+
+class LegacyTaskArchive(Base):
+    """Audit-only original V1 data for non-destructive migration/reconciliation."""
+    __tablename__ = "v2_legacy_task_archive"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    legacy_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    original_json: Mapped[str] = mapped_column(Text, nullable=False)
+    source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (UniqueConstraint("owner_uid", "legacy_id", name="uq_v2_legacy_archive_owner_id"),)
