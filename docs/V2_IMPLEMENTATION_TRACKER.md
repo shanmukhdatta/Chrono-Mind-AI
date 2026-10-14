@@ -103,3 +103,14 @@ Current stack: Phase 0 PR #1 -> `main`, Phase 1 PR #2 -> `v2/phase0-safety`. The
 - Added SQLAlchemy domain tables, Alembic revision, tenant-scoped V2 goals/tasks/preferences API with optimistic task versions, and isolated API tests.
 - Existing Firestore endpoints and data remain untouched. PostgreSQL cutover/export/import, live database smoke tests, and full Phase 2 acceptance are **not complete**.
 - See [PostgreSQL Core](PHASE2_POSTGRES_CORE.md) for setup and limitations. Never claim Phase 2 completed solely on the basis of this foundation.
+
+## V2 integration snapshot — 2026-10-14
+
+- Feature branches are **stacked draft PRs #9–#34**, targeted at their previous feature branch, not directly at main. None were merged into main as part of this implementation sequence.
+- Latest integrated work: PostgreSQL domain, secure goals/tasks/preferences, fixed events, conflict-aware deterministic schedule previews, human approvals and undo, durable LangGraph graph foundation, structured assistant drafts and voice frontend, task/focus/dashboards, opt-in behavior preferences, recurrence, notifications, cross-user data export and task dependency DAG.
+- GitHub Actions passed for the preceding branches through #33; PR #34 and the integration branch must be rechecked against their latest commits.
+- **No real PostgreSQL/Firebase/Microphone/LLM or production end-to-end verification was performed by this development session.** GitHub CI exercises isolated tests and frontend build, not live external services.
+- Firestore V1 remains the deployed/legacy data source until controlled migration. Do not delete existing users/tasks and do not claim complete V2 deployment.
+- A portable route-registration and Alembic revision-chain test plus an Antigravity manual integration handoff are added in the final integration branch.
+- Real PostgreSQL migrations, PostgreSQL checkpointer recovery, owner isolation with live Firebase identities, all-user/data deletion, managed cron, full task dependency sequencing, CI E2E, mobile/a11y and launch hardening remain release blockers.
+- **Next operator action:** run [V2 Antigravity integration acceptance](V2_ANTIGRAVITY_HANDOFF.md) on a local disposable database and return evidence; merge only after resolving failures and reviewing stacked PR order.
