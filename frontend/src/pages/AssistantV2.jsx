@@ -108,15 +108,33 @@ export default function AssistantV2() {
   const saveDraft = async entry => {
     const draft = extractDraft(entry.decision)
     if (!draft || busy) return
-    if (!window.confirm(`Save this ${draft.kind} in your ChronoMind account?\n\n${draft.payload.title}`)) return
+    const actionLabel = draft.kind === 'task_change'
+      ? draft.payload.operation + ' task ' + draft.payload.task_id
+      : 'Save ' + draft.kind + ': ' + draft.payload.title
+    if (!window.confirm('Confirm this ChronoMind operation?\\n\\n' + actionLabel)) return
     setBusy(true)
     setError('')
     try {
-      const url = draft.kind === 'task' ? '/api/v2/tasks' : '/api/v2/goals'
-      const response = await api.post(url, draft.payload)
-      if (response.status !== 201) throw new Error('Storage did not confirm creation')
+      let response
+      if (draft.kind === 'task_change') {
+        const { task_id, version, operation, ...changes } = draft.payload
+        const url = '/api/v2/tasks/' + encodeURIComponent(task_id)
+        if (operation === 'delete') {
+          response = await api.delete(url)
+        } else {
+          const patch = operation === 'complete' ? { status: 'completed' }
+            : operation === 'archive' ? { status: 'archived' } : changes
+          response = await api.patch(url, { version, ...patch })
+        }
+        if (![200, 204].includes(response.status)) throw new Error('Task action was not confirmed')
+      } else {
+        const url = draft.kind === 'task' ? '/api/v2/tasks' : '/api/v2/goals'
+        response = await api.post(url, draft.payload)
+        if (response.status !== 201) throw new Error('Storage did not confirm creation')
+      }
       setHistory(existing => existing.map(item => item.id === entry.id ? { ...item, saved: true } : item))
-      toast.success(draft.kind === 'task' ? 'Task saved to PostgreSQL' : 'Goal saved to PostgreSQL')
+      toast.success(draft.kind === 'task_change' ? 'Task action saved to PostgreSQL'
+        : draft.kind === 'task' ? 'Task saved to PostgreSQL' : 'Goal saved to PostgreSQL')
       await readBriefing()
     } catch (err) {
       const message = friendlyError(err)
@@ -184,13 +202,16 @@ export default function AssistantV2() {
                   <p className="text-xs uppercase font-semibold text-peach-dark flex gap-2 items-center">
                     <ShieldCheck className="w-4 h-4" /> Awaiting your confirmation
                   </p>
-                  <p className="font-semibold">{extractDraft(entry.decision).payload.title}</p>
+                  <p className="font-semibold">{extractDraft(entry.decision).payload.title ||
+                    (extractDraft(entry.decision).payload.operation + ' task ' + extractDraft(entry.decision).payload.task_id)}</p>
                   {extractDraft(entry.decision).kind === 'task' && (
                     <p className="text-sm text-dark-muted">{extractDraft(entry.decision).payload.duration_minutes} minutes</p>
                   )}
                   {entry.saved ? <p className="text-green-700 text-sm">Saved successfully.</p> : (
                     <button type="button" disabled={busy} onClick={() => saveDraft(entry)} className="btn-primary text-sm">
-                      Save {extractDraft(entry.decision).kind}
+                      Confirm {extractDraft(entry.decision).kind === 'task_change'
+                        ? extractDraft(entry.decision).payload.operation + ' task'
+                        : 'save ' + extractDraft(entry.decision).kind}
                     </button>
                   )}
                 </div>

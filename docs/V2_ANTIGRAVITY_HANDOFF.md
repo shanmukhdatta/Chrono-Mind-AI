@@ -104,3 +104,12 @@ Paste the complete test output for backend pytest, frontend Vitest/build, Alembi
 - Verify fast/reasoning/no-LLM assistant routing and `GET /api/v2/assistant/metrics`, with no Groq key as well as a valid test key. No raw messages should be stored in telemetry.
 - Verify jobs never run in each web worker, and no failed scheduled tasks are silently deleted.
 - Compare the **README feature audit** with actual code, and list missing/partial features separately from bugs. Implement missing core product functionality on new branches rather than claiming untested features pass.
+
+## 11. Human-confirmed assistant task actions (PR #40)
+
+- Sign into V2 using a real Firebase account and create a pending task with a recognizable name. In Assistant V2, ask it to rename/update, complete or archive that task. Confirm that /assistant/chat returns a *draft* and does not change the task automatically.
+- Inspect the proposal's exact task ID and version; click the confirmation button and verify V2 Tasks refreshes with the expected persisted change.
+- Test deletion explicitly on an unscheduled task; also test an already-scheduled task, which must be rejected with HTTP 409 rather than silently removing calendar blocks.
+- From a second Firebase account, attempt to replay the first user's task ID and verify rejection. Edit the same task from another tab before confirming an old draft: stale version must return HTTP 409.
+- Disconnect Groq and verify the assistant returns a truthful fallback with no writes; the normal manual Tasks and Goals screens must still work.
+- The interpreter is NOT allowed to initiate arbitrary tools, URLs, calls, or calendar mutations. All task changes must use the known authenticated task CRUD endpoints after user confirmation.
