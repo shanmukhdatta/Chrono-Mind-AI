@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { User, Flame, CheckCircle2, RefreshCw, LogOut, Trash2, AlertTriangle } from 'lucide-react'
+import { User, Flame, CheckCircle2, RefreshCw, LogOut, Trash2, AlertTriangle, Download } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useAuth } from '../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,8 @@ export default function Profile() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -32,6 +34,31 @@ export default function Profile() {
   const handleSignOut = async () => {
     await signOutUser()
     navigate('/')
+  }
+
+  const handleV2Export = async () => {
+    if (user?.uid === 'demo') {
+      setExportError('Sign in to export real PostgreSQL data.')
+      return
+    }
+    setExporting(true)
+    setExportError('')
+    try {
+      const response = await api.get('/api/v2/account/export', { responseType: 'blob' })
+      const blob = new Blob([response.data], { type: 'application/json' })
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = 'chronomind-v2-postgres-export.json'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1500)
+    } catch (error) {
+      setExportError('Export could not be downloaded. Please verify your V2 database configuration and sign-in.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const statCards = stats ? [
@@ -62,7 +89,7 @@ export default function Profile() {
 
       {/* Stats */}
       <div>
-        <h3 className="font-semibold text-dark mb-3">Your Stats</h3>
+        <h3 className="font-semibold text-dark mb-3">Legacy Firestore Stats (V1)</h3>
         {loading ? (
           <div className="flex justify-center py-10"><Spinner size="lg" /></div>
         ) : (
@@ -110,18 +137,29 @@ export default function Profile() {
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
 
+        <div className="rounded-xl border border-gray-100 p-4 bg-white space-y-2">
+          <p className="font-semibold text-sm">Your V2 PostgreSQL data</p>
+          <p className="text-xs text-dark-muted">Download an authenticated JSON export of V2 application records. This export does not include legacy Firestore or LangGraph checkpoints.</p>
+          <button type="button" disabled={exporting || user?.uid === 'demo'} onClick={handleV2Export}
+            className="px-4 py-2 text-sm border rounded-xl flex items-center gap-2 disabled:opacity-50">
+            <Download className="w-4 h-4" />
+            {exporting ? 'Preparing export...' : 'Export V2 PostgreSQL data'}
+          </button>
+          {exportError && <p role="alert" className="text-sm text-red-700">{exportError}</p>}
+        </div>
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
+            disabled={user?.uid === 'demo'}
             className="w-full text-red-400 text-sm hover:text-red-600 transition-colors py-2"
           >
-            Delete all my data
+            Delete legacy Firestore tasks and notifications
           </button>
         ) : (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">This will permanently delete all your tasks and data. This cannot be undone.</p>
+              <p className="text-sm text-red-700">This only deletes legacy Firestore tasks and notifications. It does not delete V2 PostgreSQL records, LangGraph checkpoints, or your Firebase account. This cannot be undone.</p>
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 bg-gray-100 rounded-xl text-sm font-medium text-dark">Cancel</button>
@@ -136,7 +174,7 @@ export default function Profile() {
                 }}
                 className="flex-1 py-2 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600"
               >
-                <Trash2 className="w-4 h-4 inline mr-1" /> Yes, Delete All
+                <Trash2 className="w-4 h-4 inline mr-1" /> Delete Legacy Data
               </button>
             </div>
           </div>

@@ -22,6 +22,7 @@ from v2.dashboard_api import router as dashboard_v2_router
 from v2.recurrence import router as recurrence_v2_router
 from v2.focus_api import router as focus_v2_router
 from v2.notifications_api import router as notifications_v2_router
+from v2.account_data import router as account_v2_router
 from middleware.auth import get_current_user, get_admin_user
 
 limiter = Limiter(key_func=get_remote_address)
@@ -62,6 +63,7 @@ app.include_router(dashboard_v2_router)
 app.include_router(recurrence_v2_router)
 app.include_router(focus_v2_router)
 app.include_router(notifications_v2_router)
+app.include_router(account_v2_router)
 
 @app.get("/health")
 async def health_check():
