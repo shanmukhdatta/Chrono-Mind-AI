@@ -3,6 +3,7 @@ import { CheckCircle2, CircleX, RotateCcw, ShieldCheck, CalendarDays } from 'luc
 import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../lib/api'
+import { isoToDateTimeLocal } from '../lib/tasksV2'
 import { useAuthStore } from '../store/authStore'
 
 function describeError(error) {
@@ -32,6 +33,7 @@ export default function ApprovalCenter() {
   const [loading, setLoading] = useState(!demo)
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
+  const [proposedStarts, setProposedStarts] = useState({})
 
   const refresh = useCallback(async () => {
     if (demo) return
@@ -74,6 +76,30 @@ export default function ApprovalCenter() {
       const message = describeError(err)
       setError(message)
       toast.error(message)
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const moveSession = async (index, original) => {
+    const value = proposedStarts[index] || isoToDateTimeLocal(original.starts_at)
+    const parsed = new Date(value)
+    if (!Number.isFinite(parsed.getTime())) {
+      setError('Choose a valid new local start time')
+      return
+    }
+    setWorking(true)
+    setError('')
+    try {
+      await api.put('/api/v2/plans/' + selected.id + '/blocks', {
+        block_index: index, starts_at: parsed.toISOString()
+      })
+      setProposedStarts({})
+      await refresh()
+      toast.success('Proposal updated. Calendar has not changed.')
+    } catch (err) {
+      setError(describeError(err))
+      toast.error(describeError(err))
     } finally {
       setWorking(false)
     }
@@ -138,6 +164,20 @@ export default function ApprovalCenter() {
                     <div key={block.task_id + block.starts_at + index} className="rounded-xl border p-3">
                       <p className="font-medium">{block.title}</p>
                       <p className="text-sm text-dark-muted mt-1">{local(block.starts_at)} → {local(block.ends_at)} · {block.duration_minutes} min</p>
+                      {selected.status === 'pending' && (
+                        <div className="mt-3 flex flex-col sm:flex-row sm:items-end gap-2">
+                          <label className="block text-xs font-medium flex-1">Move session to
+                            <input type="datetime-local" className="input-field mt-1"
+                              value={proposedStarts[index] ?? isoToDateTimeLocal(block.starts_at)}
+                              onChange={e => setProposedStarts(v => ({ ...v, [index]: e.target.value }))}/>
+                          </label>
+                          <button type="button" disabled={working}
+                            onClick={() => moveSession(index, block)}
+                            className="border rounded-lg px-3 py-2 text-sm disabled:opacity-50">
+                            Update proposal
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
