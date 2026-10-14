@@ -89,6 +89,7 @@ def get_preview(
                 row.importance, _aware(row.deadline_at),
                 row.goal_id in active_goal_ids, generated
             ).score,
+            row.splittable,
         )
         for row in rows
     ]

@@ -45,6 +45,7 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    splittable: Mapped[bool] = mapped_column(default=True, nullable=False)
     importance: Mapped[str] = mapped_column(String(24), default="important", nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False)
     deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
