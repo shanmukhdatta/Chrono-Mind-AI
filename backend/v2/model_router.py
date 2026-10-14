@@ -1,7 +1,13 @@
 """Allowlisted, low-cost routing: deterministic queries, fast and complex LLM tiers."""
 import re
 
-ALLOWED_MODELS = {"llama-3.1-8b-instant", "llama-3.3-70b-versatile"}
+ALLOWED_MODELS = {
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
+}
 
 
 def can_answer_without_llm(message: str) -> bool:
