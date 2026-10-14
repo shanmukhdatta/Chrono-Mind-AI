@@ -1,25 +1,25 @@
-fastapi==0.111.0
-uvicorn[standard]==0.30.0
-pydantic==2.12.5
-firebase-admin==6.5.0
-groq==0.9.0
-langgraph==1.2.12
-langchain-core==1.4.7
-apscheduler==3.10.4
-pytz==2024.1
-python-multipart==0.0.9
-slowapi==0.1.9
-bleach==6.1.0
-python-dotenv==1.0.0
-pytest==8.2.0
-pytest-asyncio==0.24.0
-httpx==0.27.0
-gunicorn==22.0.0
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.0
+firebase-admin==7.7.0
+groq==1.7.0
+langgraph==1.2.14
+langchain-core==1.6.9
+apscheduler==3.11.3
+pytz==2026.5
+python-multipart==0.0.32
+slowapi==0.1.10
+bleach==6.4.0
+python-dotenv==1.2.4
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+gunicorn==26.2.0
 
 # V2 relational persistence (legacy Firebase remains operational)
-SQLAlchemy==2.0.36
-alembic==1.14.0
-psycopg[binary]==3.2.3
+SQLAlchemy==2.1.4
+alembic==1.20.0
+psycopg[binary]==3.3.6
 
 # Production-durable LangGraph checkpointing
 langgraph-checkpoint-postgres==3.1.2
