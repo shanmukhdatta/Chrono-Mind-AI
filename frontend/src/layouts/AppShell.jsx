@@ -16,7 +16,8 @@ const NAV_ITEMS = [
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
   { path: '/preferences', label: 'Preferences', icon: SlidersHorizontal },
-  { path: '/assistant', label: 'Assistant', icon: Sparkles },
+  { path: '/assistant', label: 'Assistant (V1)', icon: Sparkles },
+  { path: '/assistant-v2', label: 'Assistant V2', icon: Sparkles },
   { path: '/profile',   label: 'Profile',   icon: User },
 ]
 
