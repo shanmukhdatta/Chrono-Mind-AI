@@ -17,7 +17,7 @@ export default function Landing() {
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
 
   useEffect(() => {
-    if (user) navigate('/dashboard')
+    if (user && user.uid !== 'demo') navigate('/dashboard-v2')
   }, [user, navigate])
 
   const handleDemoMode = () => {
@@ -27,18 +27,18 @@ export default function Landing() {
   }
 
   const features = [
-    { icon: Sparkles, title: 'Auto-Rescheduling', desc: 'Missed important tasks automatically move to tomorrow. Never lose a commitment again.' },
+    { icon: Sparkles, title: 'Adaptive Planning', desc: 'Generate constraint-aware schedules and approve changes before saving them.' },
     { icon: Calendar, title: '24-Hour Calendar', desc: 'Full day view from midnight to midnight. Click any slot to add tasks instantly.' },
     { icon: Target, title: 'Smart Priority', desc: 'Important tasks get rescheduled. Optional unfinished tasks are preserved for review. Smart clutter-free planning.' },
-    { icon: Sparkles, title: 'AI Assistant', desc: 'Voice and text scheduling. Just say "Practice DSA for 1 hour from now" and it is done.' },
-    { icon: Repeat, title: 'Recurrence (Planned)', desc: 'Save repeat preferences now. Automatic creation of future occurrences is planned for V2 Phase 3.' },
-    { icon: Upload, title: 'Timetable Import', desc: 'Upload your college timetable (Phase 2 preview). OCR integration coming soon.' },
+    { icon: Sparkles, title: 'AI Assistant', desc: 'Speak or type a request, then confirm the structured task or goal draft.' },
+    { icon: Repeat, title: 'Recurring Tasks', desc: 'Create daily or weekly routines and generate future task occurrences.' },
+    { icon: Upload, title: 'Human-Controlled Plans', desc: 'Review proposals, inspect conflicts and undo approved schedules.' },
   ]
 
   const steps = [
     { num: '01', title: 'Add Your Tasks', desc: 'Manually or via AI voice assistant' },
     { num: '02', title: 'Focus on Your Day', desc: 'Work with a clean 24-hour calendar view' },
-    { num: '03', title: 'ChronoMind Handles Rest', desc: 'Auto-reschedule what you missed overnight' },
+    { num: '03', title: 'Review Your Plan', desc: 'Approve or reject scheduling suggestions' },
   ]
 
   const containerVariants = {
@@ -140,7 +140,7 @@ export default function Landing() {
               </motion.h1>
 
               <motion.p variants={itemVariants} className="text-xl text-dark-muted max-w-lg leading-relaxed">
-                ChronoMind AI automatically reschedules your missed tasks — so you wake up to a plan, not a mess. Built for Indian engineering students.
+                ChronoMind AI suggests realistic schedules, explains conflicts and lets you approve changes. Built for students and busy planners.
               </motion.p>
 
               <motion.div variants={itemVariants} className="flex flex-wrap gap-4">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2 } from 'lucide-react'
+import { NavLink, useNavigate, useLocation, Link } from 'react-router-dom'
+import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2, Bell } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { ClockWidget } from '../components/ClockWidget'
@@ -9,20 +9,20 @@ import { AssistantPanel } from '../components/AssistantPanel'
 import { FocusTimer } from '../components/FocusTimer'
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard (V1)', icon: LayoutDashboard },
-  { path: '/dashboard-v2', label: 'V2 Dashboard', icon: LayoutDashboard },
-  { path: '/calendar',  label: 'Calendar (V1)',  icon: Calendar },
-  { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
-  { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
+  { path: '/dashboard-v2', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/calendar-v2', label: 'Calendar', icon: CalendarDays },
+  { path: '/tasks-v2', label: 'Tasks', icon: ListTodo },
   { path: '/focus-v2', label: 'Focus Studio', icon: Timer },
-  { path: '/notifications-v2', label: 'Notifications V2', icon: Bell },
+  { path: '/notifications-v2', label: 'Notifications', icon: Bell },
   { path: '/recurrence-v2', label: 'Recurring Tasks', icon: Repeat2 },
   { path: '/goals',     label: 'Goals',     icon: Target },
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
   { path: '/preferences', label: 'Preferences', icon: SlidersHorizontal },
-  { path: '/assistant', label: 'Assistant (V1)', icon: Sparkles },
-  { path: '/assistant-v2', label: 'Assistant V2', icon: Sparkles },
+  { path: '/assistant-v2', label: 'AI Assistant', icon: Sparkles },
+  { path: '/dashboard', label: 'Legacy Dashboard', icon: LayoutDashboard },
+  { path: '/calendar', label: 'Legacy Calendar', icon: Calendar },
+  { path: '/assistant', label: 'Legacy Assistant', icon: Sparkles },
   { path: '/profile',   label: 'Profile',   icon: User },
 ]
 
@@ -32,6 +32,7 @@ export function AppShell({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const legacyPage = ['/dashboard','/calendar','/assistant'].includes(location.pathname)
 
   const handleSignOut = async () => {
     await signOutUser()
@@ -142,7 +143,12 @@ export function AppShell({ children }) {
             </button>
             <h2 className="font-semibold text-dark">{currentLabel}</h2>
           </div>
-          <NotificationBell />
+          {legacyPage ? <NotificationBell /> : (
+            <Link to="/notifications-v2" title="V2 notifications" aria-label="Open notifications"
+              className="p-2 hover:bg-gray-100 rounded-xl">
+              <Bell className="w-5 h-5 text-dark-muted" />
+            </Link>
+          )}
         </header>
 
         {/* Page */}
@@ -152,8 +158,8 @@ export function AppShell({ children }) {
       </main>
 
       {/* Floating */}
-      <AssistantPanel />
-      <FocusTimer />
+      {legacyPage && <AssistantPanel />}
+      {legacyPage && <FocusTimer />}
     </div>
   )
 }

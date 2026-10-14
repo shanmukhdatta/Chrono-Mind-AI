@@ -12,6 +12,7 @@ class PlanningTask:
     importance: str = "important"
     deadline_at: datetime | None = None
     blocked_reason: str | None = None
+    priority_score: int = 0
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,7 @@ def preview_schedule(
     unscheduled = []
 
     ordered = sorted(tasks, key=lambda t: (
+        -t.priority_score,
         0 if t.importance == "important" else 1,
         t.deadline_at or datetime.max.replace(tzinfo=zone),
         t.task_id,

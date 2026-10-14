@@ -44,7 +44,7 @@ def test_migration_history_is_linear_and_matches_schema():
     stems = [
         "0001_initial", "0002_proposals", "0003_legacy_archive",
         "0004_recurrence", "0005_focus", "0006_notifications",
-        "0007_dependencies",
+        "0007_dependencies", "0008_release_hardening",
     ]
     previous = None
     for stem in stems:

@@ -68,7 +68,7 @@ class ScheduleBlock(Base):
     task_id: Mapped[str] = mapped_column(ForeignKey("v2_tasks.id", ondelete="CASCADE"), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    source: Mapped[str] = mapped_column(String(32), default="manual", nullable=False)
+    source: Mapped[str] = mapped_column(String(64), default="manual", nullable=False)
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="schedule_order"),
         Index("ix_v2_blocks_owner_start", "owner_uid", "starts_at"),
