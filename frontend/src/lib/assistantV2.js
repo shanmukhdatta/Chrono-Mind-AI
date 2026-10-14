@@ -13,6 +13,18 @@ export function extractDraft(decision) {
       description: decision.draft_goal.description || '',
     } }
   }
+  if (decision?.kind === 'draft_task_change' && decision.draft_task_change) {
+    const item = decision.draft_task_change
+    const valid = ['update', 'complete', 'archive', 'delete']
+    if (!valid.includes(item.operation)) return null
+    const payload = { task_id: item.task_id, version: item.version, operation: item.operation }
+    if (item.operation === 'update') {
+      if (item.title != null) payload.title = item.title
+      if (item.duration_minutes != null) payload.duration_minutes = item.duration_minutes
+      if (item.importance != null) payload.importance = item.importance
+    }
+    return { kind: 'task_change', payload }
+  }
   return null
 }
 
