@@ -9,7 +9,8 @@ import { AssistantPanel } from '../components/AssistantPanel'
 import { FocusTimer } from '../components/FocusTimer'
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Dashboard (V1)', icon: LayoutDashboard },
+  { path: '/dashboard-v2', label: 'V2 Dashboard', icon: LayoutDashboard },
   { path: '/calendar',  label: 'Calendar (V1)',  icon: Calendar },
   { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
   { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
