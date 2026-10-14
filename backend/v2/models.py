@@ -210,3 +210,20 @@ class BehaviorEvent(Base):
         CheckConstraint("hour_of_day BETWEEN 0 AND 23", name="behavior_valid_hour"),
         CheckConstraint("duration_seconds >= 0", name="behavior_valid_duration"),
     )
+
+
+class InAppNotification(Base):
+    """One user-scoped notification per source, date, and event kind."""
+    __tablename__ = "v2_inapp_notifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    message: Mapped[str] = mapped_column(String(300), nullable=False)
+    source_task_id: Mapped[str | None] = mapped_column(ForeignKey("v2_tasks.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("owner_uid", "dedupe_key", name="uq_v2_notification_owner_key"),
+        Index("ix_v2_notification_owner_created", "owner_uid", "created_at"),
+    )
