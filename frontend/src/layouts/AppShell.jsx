@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2, Bell, Bot } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { ClockWidget } from '../components/ClockWidget'
@@ -8,10 +8,24 @@ import { NotificationBell } from '../components/NotificationBell'
 import { AssistantPanel } from '../components/AssistantPanel'
 import { FocusTimer } from '../components/FocusTimer'
 
+const V2_DEFAULT = import.meta.env.VITE_V2_DEFAULT === 'true'
+
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/calendar',  label: 'Calendar',  icon: Calendar },
-  { path: '/assistant', label: 'Assistant', icon: Sparkles },
+  ...(!V2_DEFAULT ? [{ path: '/dashboard', label: 'Dashboard (V1)', icon: LayoutDashboard }] : []),
+  { path: '/dashboard-v2', label: 'V2 Dashboard', icon: LayoutDashboard },
+  ...(!V2_DEFAULT ? [{ path: '/calendar', label: 'Calendar (V1)', icon: Calendar }] : []),
+  { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
+  { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
+  { path: '/focus-v2', label: 'Focus Studio', icon: Timer },
+  { path: '/notifications-v2', label: 'Notifications V2', icon: Bell },
+  { path: '/recurrence-v2', label: 'Recurring Tasks', icon: Repeat2 },
+  { path: '/goals',     label: 'Goals',     icon: Target },
+  { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
+  { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
+  { path: '/agent-runs', label: 'Agent Runs', icon: Bot },
+  { path: '/preferences', label: 'Preferences', icon: SlidersHorizontal },
+  ...(!V2_DEFAULT ? [{ path: '/assistant', label: 'Assistant (V1)', icon: Sparkles }] : []),
+  { path: '/assistant-v2', label: 'Assistant V2', icon: Sparkles },
   { path: '/profile',   label: 'Profile',   icon: User },
 ]
 
@@ -131,7 +145,7 @@ export function AppShell({ children }) {
             </button>
             <h2 className="font-semibold text-dark">{currentLabel}</h2>
           </div>
-          <NotificationBell />
+          {V2_DEFAULT ? <NavLink to="/notifications-v2" aria-label="V2 notifications" className="p-2 rounded-xl hover:bg-gray-100"><Bell className="w-5 h-5" /></NavLink> : <NotificationBell />}
         </header>
 
         {/* Page */}
@@ -141,8 +155,8 @@ export function AppShell({ children }) {
       </main>
 
       {/* Floating */}
-      <AssistantPanel />
-      <FocusTimer />
+      {!V2_DEFAULT && <AssistantPanel />}
+      {!V2_DEFAULT && <FocusTimer />}
     </div>
   )
 }

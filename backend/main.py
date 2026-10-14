@@ -1,5 +1,7 @@
 import logging
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, HTTPException
+from sqlalchemy import text
+from v2.db import engine as v2_engine
 
 logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +14,18 @@ from slowapi.middleware import SlowAPIMiddleware
 from core.config import get_cors_origins
 from core.lifecycle import application_lifespan
 from routers import tasks, assistant, profile, timetable
+from v2.api import router as v2_router
+from v2.planning_api import router as planning_preview_router
+from v2.calendar_api import router as v2_calendar_router
+from v2.proposals_api import router as proposals_router
+from v2.agent_api import router as agent_router
+from v2.assistant import router as assistant_v2_router
+from v2.dashboard_api import router as dashboard_v2_router
+from v2.recurrence import router as recurrence_v2_router
+from v2.focus_api import router as focus_v2_router
+from v2.notifications_api import router as notifications_v2_router
+from v2.account_data import router as account_v2_router
+from v2.dependencies_api import router as dependency_v2_router
 from middleware.auth import get_current_user, get_admin_user
 
 limiter = Limiter(key_func=get_remote_address)
@@ -33,7 +47,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"]
 )
 
@@ -42,10 +56,34 @@ app.include_router(tasks.router)
 app.include_router(assistant.router)
 app.include_router(profile.router)
 app.include_router(timetable.router)
+app.include_router(v2_router)
+app.include_router(planning_preview_router)
+app.include_router(v2_calendar_router)
+app.include_router(proposals_router)
+app.include_router(agent_router)
+app.include_router(assistant_v2_router)
+app.include_router(dashboard_v2_router)
+app.include_router(recurrence_v2_router)
+app.include_router(focus_v2_router)
+app.include_router(notifications_v2_router)
+app.include_router(account_v2_router)
+app.include_router(dependency_v2_router)
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "chronomind-ai"}
+
+@app.get("/health/v2")
+def v2_readiness():
+    """Real database readiness; /health remains a lightweight process liveness check."""
+    try:
+        with v2_engine().connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.warning("V2 PostgreSQL readiness check failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="V2 PostgreSQL is not ready") from exc
+    return {"status": "ready", "database": "postgresql"}
+
 
 @app.post("/api/admin/trigger-reschedule")
 async def trigger_reschedule(current_user: dict = Depends(get_admin_user)):

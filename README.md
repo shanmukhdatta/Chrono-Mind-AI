@@ -1,5 +1,9 @@
 # ChronoMind AI 🧠⏰
 
+> **V2 implementation status (October 2026):** The architecture below is a product specification, not a claim that every feature is shipped. Source implementation and tests are on the V2 development PRs. Review [the README-to-code audit](docs/V2_README_FEATURE_AUDIT.md) and [Antigravity integration guide](docs/V2_ANTIGRAVITY_HANDOFF.md) before enabling V2 or deploying. Production PostgreSQL/Firebase tests and remaining gaps are explicitly tracked.
+
+
+
 **AI-Powered Day Planner for College Students**  
 Built with FastAPI · LangGraph · Groq · React · Firebase
 

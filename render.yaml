@@ -16,3 +16,13 @@ services:
         sync: false
       - key: ADMIN_UID
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LANGGRAPH_STRICT_MSGPACK
+        value: "true"
+      - key: CHRONOMIND_DISABLE_LEGACY_SCHEDULER
+        value: "1"
+      - key: CHRONOMIND_LLM_FAST_MODEL
+        value: llama-3.1-8b-instant
+      - key: CHRONOMIND_LLM_REASONING_MODEL
+        value: llama-3.3-70b-versatile
