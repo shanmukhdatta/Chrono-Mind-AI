@@ -40,7 +40,7 @@ def test_owner_only_dependency_crud_and_version_increment():
     )
     Base.metadata.create_all(engine)
     try:
-        with Session(engine) as db:
+        with Session(engine, expire_on_commit=False) as db:
             db.add_all([User(uid="alice"), User(uid="bob")])
             db.flush()
             rows = [
