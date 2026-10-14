@@ -172,3 +172,41 @@ class RecurrenceSkip(Base):
     series_id: Mapped[str] = mapped_column(ForeignKey("v2_recurrence_series.id"), nullable=False)
     occurrence_date: Mapped[date] = mapped_column(Date, nullable=False)
     __table_args__ = (UniqueConstraint("series_id","occurrence_date",name="uq_v2_recurrence_skip"),)
+
+
+class BehaviorConsent(Base):
+    __tablename__ = "v2_behavior_consent"
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class FocusSession(Base):
+    __tablename__ = "v2_focus_sessions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    task_id: Mapped[str | None] = mapped_column(ForeignKey("v2_tasks.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    planned_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=1500)
+    actual_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        CheckConstraint("status IN ('active','completed','abandoned')", name="focus_status"),
+        CheckConstraint("planned_seconds BETWEEN 60 AND 14400", name="focus_planned_bounds"),
+        Index("ix_v2_focus_owner_started", "owner_uid", "started_at"),
+    )
+
+
+class BehaviorEvent(Base):
+    __tablename__ = "v2_behavior_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    hour_of_day: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    happened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (
+        CheckConstraint("hour_of_day BETWEEN 0 AND 23", name="behavior_valid_hour"),
+        CheckConstraint("duration_seconds >= 0", name="behavior_valid_duration"),
+    )
