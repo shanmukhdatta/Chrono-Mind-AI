@@ -54,6 +54,11 @@ def test_assistant_chat_draft_is_noncommitting():
             result = browser.post("/api/v2/assistant/chat", json={"message": "What should I do?"})
         assert result.json()["mode"] == "fallback"
         assert result.json()["decision"]["kind"] == "answer"
+        with patch("v2.assistant.llm_decision", side_effect=AssertionError("no provider call permitted")):
+            offline = browser.post("/api/v2/assistant/chat", json={"message": "List my pending tasks"})
+        assert offline.status_code == 200
+        assert offline.json()["mode"] == "deterministic"
+        assert offline.json()["changes_committed"] is False
         assert browser.get("/api/v2/assistant/briefing").json()["pending_count"] == 1
     finally:
         Base.metadata.drop_all(engine)

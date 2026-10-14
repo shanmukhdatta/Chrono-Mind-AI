@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2, Bell } from 'lucide-react'
+import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2, Bell, Bot } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { ClockWidget } from '../components/ClockWidget'
@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { path: '/goals',     label: 'Goals',     icon: Target },
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
+  { path: '/agent-runs', label: 'Agent Runs', icon: Bot },
   { path: '/preferences', label: 'Preferences', icon: SlidersHorizontal },
   ...(!V2_DEFAULT ? [{ path: '/assistant', label: 'Assistant (V1)', icon: Sparkles }] : []),
   { path: '/assistant-v2', label: 'Assistant V2', icon: Sparkles },

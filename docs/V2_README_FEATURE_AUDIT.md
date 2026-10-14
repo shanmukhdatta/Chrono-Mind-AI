@@ -19,13 +19,13 @@
 | Semantic task decomposition | Time-block splitting only | **Missing** |
 | Approval, rejection, undo | Transactional PostgreSQL proposals and review UI | Code + isolated tests; real concurrency verification pending |
 | User modification of proposed plan | Reject/regenerate or modify original task; no proposal-edit action | **Missing** |
-| Durable LangGraph | Six nodes, explicit Postgres checkpointer and human interrupt | Partial: external database restart not verified; no bounded replan |
+| Durable LangGraph | Six nodes, explicit Postgres checkpointer, human interrupt and Agent Runs page | Partial: external database restart not verified; no bounded replan |
 | Structured assistant | Validated task/goal drafts and explicit confirmation | Partial: query/update/complete/remove/full toolset missing |
-| Adaptive LLM routing | One allowlisted Groq model selected via environment | **Missing** complexity-based routing, fallback provider and cost-aware selection |
+| Adaptive LLM routing | Basic no-LLM query shortcut, allowlisted fast/reasoning selector and token/latency logs | Partial: heuristic routing only, no full cost dashboard or multi-provider fallback |
 | Voice | Browser STT and languages where browser supports | Implemented option; real browser/device acceptance pending |
 | Behavioral learning | Opt-in focus records, preferred-hour heuristic applied to preview | Partial: no postponement/approval acceptance feedback or category-specific profile |
 | Explainability / decision history | Priority reason strings, unscheduled reasons, persisted proposals | Partial: no structured full diff/reason ledger |
-| Token/latency/cost observability | Backend logs and basic tests | **Missing** production counters/traces and user-visible metrics |
+| Token/latency/cost observability | LLM response latency and provider token counts logged when available | Partial: no durable traces, cost rollup or metrics dashboard |
 | AI evaluation | 120 reproducible deterministic scheduling cases, invariant checks | Partial: no full agent/LLM benchmark, fairness/stats or 100 human-validated intent cases |
 | Notification service | Persistent in-app deadline notifications and manual worker | Partial: no managed deployment job / push / email |
 | Firestore → PostgreSQL | Dry-run import of legacy tasks, idempotent with archive | Partial: no full source coverage, reconciled cutover or backup validation |
