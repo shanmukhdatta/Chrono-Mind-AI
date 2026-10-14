@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
   { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
   { path: '/focus-v2', label: 'Focus Studio', icon: Timer },
+  { path: '/notifications-v2', label: 'Notifications V2', icon: Bell },
   { path: '/goals',     label: 'Goals',     icon: Target },
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
