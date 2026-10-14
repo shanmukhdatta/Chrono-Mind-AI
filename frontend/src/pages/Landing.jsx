@@ -9,6 +9,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 
 export default function Landing() {
   const { signIn } = useAuth()
+  const home = import.meta.env.VITE_V2_DEFAULT === 'true' ? '/dashboard-v2' : '/dashboard'
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const heroRef = useRef(null)
@@ -17,13 +18,13 @@ export default function Landing() {
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
 
   useEffect(() => {
-    if (user) navigate('/dashboard')
-  }, [user, navigate])
+    if (user) navigate(home)
+  }, [user, navigate, home])
 
   const handleDemoMode = () => {
     useAuthStore.getState().enterDemoMode()
     useTaskStore.getState().seedDemoTasks()
-    navigate('/dashboard')
+    navigate(home)
   }
 
   const features = [

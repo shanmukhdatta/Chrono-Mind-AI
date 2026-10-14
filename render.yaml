@@ -16,3 +16,9 @@ services:
         sync: false
       - key: ADMIN_UID
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LANGGRAPH_STRICT_MSGPACK
+        value: "true"
+      - key: CHRONOMIND_DISABLE_LEGACY_SCHEDULER
+        value: "1"

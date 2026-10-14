@@ -99,7 +99,10 @@ def verify_candidate(db: Session, uid: str, plan: PlanProposal, now: datetime):
              for row in db.scalars(select(FixedEvent).where(FixedEvent.owner_uid == uid)).all()]
     occupied_by_task = defaultdict(int)
     for block in existing:
-        occupied_by_task[block.task_id] += int((ensure_aware(block.ends_at) - ensure_aware(block.starts_at)).total_seconds() // 60)
+        start = ensure_aware(block.starts_at)
+        end = ensure_aware(block.ends_at)
+        if end > now:
+            occupied_by_task[block.task_id] += int((end - max(start, now)).total_seconds() // 60)
 
     staged = []
     occupied_per_day = defaultdict(int)

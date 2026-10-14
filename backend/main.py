@@ -1,5 +1,7 @@
 import logging
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, HTTPException
+from sqlalchemy import text
+from v2.db import engine as v2_engine
 
 logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,7 +47,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"]
 )
 
@@ -70,6 +72,18 @@ app.include_router(dependency_v2_router)
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "chronomind-ai"}
+
+@app.get("/health/v2")
+def v2_readiness():
+    """Real database readiness; /health remains a lightweight process liveness check."""
+    try:
+        with v2_engine().connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.warning("V2 PostgreSQL readiness check failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="V2 PostgreSQL is not ready") from exc
+    return {"status": "ready", "database": "postgresql"}
+
 
 @app.post("/api/admin/trigger-reschedule")
 async def trigger_reschedule(current_user: dict = Depends(get_admin_user)):

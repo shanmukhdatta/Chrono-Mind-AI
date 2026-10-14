@@ -64,12 +64,16 @@ def get_preview(
         if known.get(dependency.depends_on_id) != "completed":
             blockers[dependency.task_id].append(dependency.depends_on_id)
 
+    generated = datetime.now(timezone.utc)
     scheduled = defaultdict(int)
     occupied = []
     for block in blocks:
         start = _aware(block.starts_at)
         end = _aware(block.ends_at)
-        scheduled[block.task_id] += int((end - start).total_seconds() // 60)
+        # Missed past sessions are not proof of completed work. Pending tasks
+        # must be eligible for a fresh proposal rather than silently disappearing.
+        if end > generated:
+            scheduled[block.task_id] += int((end - max(start, generated)).total_seconds() // 60)
         occupied.append(BusyInterval(start, end, counts_as_work=True))
     for event in events:
         occupied.append(BusyInterval(_aware(event.starts_at), _aware(event.ends_at)))
@@ -83,7 +87,6 @@ def get_preview(
         )
         for row in rows
     ]
-    generated = datetime.now(timezone.utc)
     suggestion = preview_schedule(tasks, occupied, opts, generated, horizon_days=days)
     return {
         "generated_at": generated.isoformat(),

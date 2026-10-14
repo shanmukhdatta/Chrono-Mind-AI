@@ -4,6 +4,9 @@ import { useAuthStore } from '../store/authStore'
 import { AppShell } from '../layouts/AppShell'
 import { Spinner } from '../components/ui/Spinner'
 
+const V2_DEFAULT = import.meta.env.VITE_V2_DEFAULT === 'true'
+const DEFAULT_HOME = V2_DEFAULT ? '/dashboard-v2' : '/dashboard'
+
 const Landing   = lazy(() => import('../pages/Landing'))
 const Dashboard = lazy(() => import('../pages/Dashboard'))
 const Calendar  = lazy(() => import('../pages/Calendar'))
@@ -42,7 +45,7 @@ function ProtectedRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore()
   if (isLoading) return <PageLoader />
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  if (isAuthenticated) return <Navigate to={DEFAULT_HOME} replace />
   return children
 }
 
