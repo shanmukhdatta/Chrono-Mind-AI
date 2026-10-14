@@ -131,3 +131,44 @@ class LegacyTaskArchive(Base):
     source_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     __table_args__ = (UniqueConstraint("owner_uid", "legacy_id", name="uq_v2_legacy_archive_owner_id"),)
+
+
+class RecurrenceSeries(Base):
+    __tablename__ = "v2_recurrence_series"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    importance: Mapped[str] = mapped_column(String(24), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(12), nullable=False)
+    weekdays: Mapped[str] = mapped_column(String(20), default="", nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False)
+    due_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    __table_args__ = (
+        CheckConstraint("frequency IN ('daily','weekly')", name="recurrence_frequency"),
+        CheckConstraint("duration_minutes BETWEEN 1 AND 1440", name="recurrence_duration"),
+        CheckConstraint("importance IN ('important','not_important')", name="recurrence_importance"),
+    )
+
+
+class RecurrenceOccurrence(Base):
+    __tablename__ = "v2_recurrence_occurrences"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    series_id: Mapped[str] = mapped_column(ForeignKey("v2_recurrence_series.id"), nullable=False)
+    occurrence_date: Mapped[date] = mapped_column(Date, nullable=False)
+    task_id: Mapped[str] = mapped_column(ForeignKey("v2_tasks.id"), nullable=False)
+    __table_args__ = (UniqueConstraint("series_id","occurrence_date",name="uq_v2_recurrence_occurrence"),)
+
+
+class RecurrenceSkip(Base):
+    __tablename__ = "v2_recurrence_skips"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    series_id: Mapped[str] = mapped_column(ForeignKey("v2_recurrence_series.id"), nullable=False)
+    occurrence_date: Mapped[date] = mapped_column(Date, nullable=False)
+    __table_args__ = (UniqueConstraint("series_id","occurrence_date",name="uq_v2_recurrence_skip"),)
