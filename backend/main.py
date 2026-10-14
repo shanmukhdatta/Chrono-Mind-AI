@@ -14,6 +14,7 @@ from core.lifecycle import application_lifespan
 from routers import tasks, assistant, profile, timetable
 from v2.api import router as v2_router
 from v2.planning_api import router as planning_preview_router
+from v2.calendar_api import router as v2_calendar_router
 from middleware.auth import get_current_user, get_admin_user
 
 limiter = Limiter(key_func=get_remote_address)
@@ -46,6 +47,7 @@ app.include_router(profile.router)
 app.include_router(timetable.router)
 app.include_router(v2_router)
 app.include_router(planning_preview_router)
+app.include_router(v2_calendar_router)
 
 @app.get("/health")
 async def health_check():
