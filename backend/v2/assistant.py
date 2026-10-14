@@ -63,11 +63,36 @@ class DraftGoal(BaseModel):
         return self
 
 
+class DraftTaskChange(BaseModel):
+    task_id: str = Field(min_length=1, max_length=36)
+    version: int = Field(ge=1)
+    operation: Literal["update", "complete", "archive", "delete"]
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    duration_minutes: int | None = Field(default=None, ge=1, le=1440)
+    importance: Literal["important", "not_important"] | None = None
+
+    @model_validator(mode="after")
+    def validate_changes(self):
+        has_edits = any(x is not None for x in (
+            self.title, self.duration_minutes, self.importance
+        ))
+        if self.operation == "update" and not has_edits:
+            raise ValueError("Update draft needs at least one change")
+        if self.operation != "update" and has_edits:
+            raise ValueError("Only an update operation can contain edits")
+        if self.title is not None:
+            if not self.title.strip():
+                raise ValueError("Task title is blank")
+            self.title = self.title.strip()
+        return self
+
+
 class AssistantDecision(BaseModel):
-    kind: Literal["answer", "draft_task", "draft_goal"]
+    kind: Literal["answer", "draft_task", "draft_goal", "draft_task_change"]
     message: str = Field(min_length=1, max_length=1200)
     draft_task: DraftTask | None = None
     draft_goal: DraftGoal | None = None
+    draft_task_change: DraftTaskChange | None = None
 
     @model_validator(mode="after")
     def check_draft(self):
@@ -75,12 +100,18 @@ class AssistantDecision(BaseModel):
             raise ValueError("Missing task draft")
         if self.kind == "draft_goal" and self.draft_goal is None:
             raise ValueError("Missing goal draft")
-        if self.kind == "answer" and (self.draft_task is not None or self.draft_goal is not None):
+        if self.kind == "draft_task_change" and self.draft_task_change is None:
+            raise ValueError("Missing task-change draft")
+        if self.kind == "answer" and any(x is not None for x in (
+            self.draft_task, self.draft_goal, self.draft_task_change
+        )):
             raise ValueError("Answer cannot contain a write operation")
         if self.kind != "draft_task":
             self.draft_task = None
         if self.kind != "draft_goal":
             self.draft_goal = None
+        if self.kind != "draft_task_change":
+            self.draft_task_change = None
         return self
 
 
@@ -100,7 +131,8 @@ def context_for_user(db: Session, uid: str) -> dict:
         "today_local": today.isoformat(),
         "timezone": user_zone,
         "tasks": [
-            {"title": task.title, "duration_minutes": task.duration_minutes,
+            {"id": task.id, "version": task.version, "status": task.status,
+             "title": task.title, "duration_minutes": task.duration_minutes,
              "deadline_at": task.deadline_at.isoformat() if task.deadline_at else None}
             for task in tasks
         ],
@@ -135,8 +167,12 @@ def llm_decision(message: str, context: dict, model_name: str | None = None, usa
     client = Groq(api_key=key, timeout=12.0, max_retries=1)
     instructions = (
         "You are ChronoMind's task planning interpreter. Respond with exactly one JSON "
-        "object containing kind ('answer','draft_task','draft_goal'), message, and "
-        "draft_task or draft_goal (null for unused). For draft_task use title, "
+        "object containing kind ('answer','draft_task','draft_goal','draft_task_change'), "
+        "message, and exactly one matching draft payload (null for unused). "
+        "draft_task_change uses an EXISTING task_id and version from task context, "
+        "operation ('update','complete','archive','delete'), plus optional title, "
+        "duration_minutes or importance ONLY for update. If ambiguous, ask a question. "
+        "For draft_task use title, "
         "duration_minutes (1..1440), importance ('important' or 'not_important'), "
         "goal_id (existing ID or null). For draft_goal use title and description. "
         "Always draft only: NEVER claim a task or goal is saved, calendar changed, "
@@ -170,6 +206,11 @@ def llm_decision(message: str, context: dict, model_name: str | None = None, usa
         valid_goal_ids = {goal["id"] for goal in context["goals"]}
         if decision.draft_task.goal_id not in valid_goal_ids:
             raise ValueError("Provider selected an unknown goal")
+    if decision.draft_task_change:
+        selection = decision.draft_task_change
+        valid = {task["id"]: task["version"] for task in context["tasks"]}
+        if valid.get(selection.task_id) != selection.version:
+            raise ValueError("Unknown or stale task selected by the provider")
     return decision
 
 
