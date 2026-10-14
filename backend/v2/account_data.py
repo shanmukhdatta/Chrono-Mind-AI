@@ -15,14 +15,14 @@ from .db import get_session
 from .models import (
     BehaviorConsent, BehaviorEvent, FixedEvent, FocusSession,
     Goal, InAppNotification, LegacyTaskArchive, PlanProposal, Preference,
-    RecurrenceOccurrence, RecurrenceSeries, RecurrenceSkip, ScheduleBlock, Task, User,
+    RecurrenceOccurrence, RecurrenceSeries, RecurrenceSkip, ScheduleBlock, Task, TaskDependency, User,
 )
 
 router = APIRouter(prefix="/api/v2/account", tags=["v2-account"])
 
 _EXPORT_TABLES = (
     ("users", User), ("goals", Goal), ("tasks", Task),
-    ("schedule_blocks", ScheduleBlock), ("fixed_events", FixedEvent),
+    ("schedule_blocks", ScheduleBlock), ("task_dependencies", TaskDependency), ("fixed_events", FixedEvent),
     ("preferences", Preference), ("planning_proposals", PlanProposal),
     ("recurrence_series", RecurrenceSeries),
     ("recurrence_occurrences", RecurrenceOccurrence), ("recurrence_skips", RecurrenceSkip),

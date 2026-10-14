@@ -11,6 +11,7 @@ class PlanningTask:
     remaining_minutes: int
     importance: str = "important"
     deadline_at: datetime | None = None
+    blocked_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,9 @@ def preview_schedule(
     for task in ordered:
         remaining = task.remaining_minutes
         if remaining <= 0:
+            continue
+        if task.blocked_reason:
+            unscheduled.append(UnscheduledTask(task.task_id, task.title, remaining, task.blocked_reason))
             continue
         if task.deadline_at is not None:
             _check_instant(task.deadline_at)

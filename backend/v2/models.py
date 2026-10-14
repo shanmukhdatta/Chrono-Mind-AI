@@ -227,3 +227,17 @@ class InAppNotification(Base):
         UniqueConstraint("owner_uid", "dedupe_key", name="uq_v2_notification_owner_key"),
         Index("ix_v2_notification_owner_created", "owner_uid", "created_at"),
     )
+
+
+class TaskDependency(Base):
+    """A task may start only once the referenced prerequisite is completed."""
+    __tablename__ = "v2_task_dependencies"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("v2_tasks.id", ondelete="CASCADE"), nullable=False)
+    depends_on_id: Mapped[str] = mapped_column(ForeignKey("v2_tasks.id", ondelete="CASCADE"), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("owner_uid", "task_id", "depends_on_id", name="uq_v2_task_dependency"),
+        CheckConstraint("task_id <> depends_on_id", name="task_no_self_dependency"),
+        Index("ix_v2_dependency_owner_task", "owner_uid", "task_id"),
+    )

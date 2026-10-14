@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
 from .db import get_session
-from .models import FixedEvent, Preference, ScheduleBlock, Task
+from .models import FixedEvent, Preference, ScheduleBlock, Task, TaskDependency
 from .planner import BusyInterval, PlanningPreferences, PlanningTask, preview_schedule
 
 router = APIRouter(prefix="/api/v2/planning", tags=["v2-planning"])
@@ -39,6 +39,18 @@ def get_preview(
     blocks = db.scalars(select(ScheduleBlock).where(ScheduleBlock.owner_uid == uid)).all()
     events = db.scalars(select(FixedEvent).where(FixedEvent.owner_uid == uid)).all()
 
+    dependencies = db.scalars(select(TaskDependency).where(TaskDependency.owner_uid == uid)).all()
+    prerequisite_ids = {item.depends_on_id for item in dependencies}
+    known = {
+        task.id: task.status for task in db.scalars(select(Task).where(
+            Task.owner_uid == uid, Task.id.in_(prerequisite_ids)
+        )).all()
+    } if prerequisite_ids else {}
+    blockers = defaultdict(list)
+    for dependency in dependencies:
+        if known.get(dependency.depends_on_id) != "completed":
+            blockers[dependency.task_id].append(dependency.depends_on_id)
+
     scheduled = defaultdict(int)
     occupied = []
     for block in blocks:
@@ -50,7 +62,12 @@ def get_preview(
         occupied.append(BusyInterval(_aware(event.starts_at), _aware(event.ends_at)))
 
     tasks = [
-        PlanningTask(row.id, row.title, max(0, row.duration_minutes - scheduled[row.id]), row.importance, _aware(row.deadline_at))
+        PlanningTask(
+            row.id, row.title, max(0, row.duration_minutes - scheduled[row.id]),
+            row.importance, _aware(row.deadline_at),
+            ("Prerequisite tasks are not yet completed: " + ", ".join(sorted(blockers[row.id])))
+            if blockers[row.id] else None,
+        )
         for row in rows
     ]
     generated = datetime.now(timezone.utc)
