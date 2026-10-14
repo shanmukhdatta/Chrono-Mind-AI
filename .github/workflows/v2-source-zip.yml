@@ -1,7 +1,7 @@
 name: V2 Source ZIP
 on:
   push:
-    branches: [v2/consolidated-readme-audit]
+    branches: [main, v2/consolidated-readme-audit]
   workflow_dispatch:
 
 permissions:
