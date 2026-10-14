@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target } from 'lucide-react'
+import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { ClockWidget } from '../components/ClockWidget'
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/calendar',  label: 'Calendar',  icon: Calendar },
   { path: '/goals',     label: 'Goals',     icon: Target },
+  { path: '/preferences', label: 'Planning', icon: SlidersHorizontal },
   { path: '/assistant', label: 'Assistant', icon: Sparkles },
   { path: '/profile',   label: 'Profile',   icon: User },
 ]
