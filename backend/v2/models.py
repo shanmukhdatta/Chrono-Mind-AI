@@ -3,7 +3,7 @@ from datetime import datetime, date, time, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
-    CheckConstraint, Date, DateTime, ForeignKey, Index, Integer,
+    CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON,
     String, Text, Time, UniqueConstraint, func
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -99,4 +99,23 @@ class Preference(Base):
     __table_args__ = (
         CheckConstraint("work_end > work_start", name="preference_work_window"),
         CheckConstraint("max_daily_minutes BETWEEN 60 AND 960", name="preference_daily_limit"),
+    )
+
+
+class PlanProposal(Base):
+    """Durable user-owned schedule proposal, never applied without approval."""
+    __tablename__ = "v2_plan_proposals"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="pending", nullable=False)
+    proposed_blocks: Mapped[list] = mapped_column(JSON, nullable=False)
+    unscheduled: Mapped[list] = mapped_column(JSON, nullable=False)
+    task_versions: Mapped[dict] = mapped_column(JSON, nullable=False)
+    preferences_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    committed_block_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','approved','rejected','undone')", name="proposal_status"),
+        Index("ix_v2_proposals_owner_created", "owner_uid", "created_at"),
     )
