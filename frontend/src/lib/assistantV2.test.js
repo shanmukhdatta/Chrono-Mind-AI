@@ -14,3 +14,37 @@ describe('structured AI drafts', () => {
     expect(extractDraft({ kind: 'unexpected', draft_goal: { title: 'X' } })).toBeNull()
   })
 })
+
+
+
+describe('confirmable changes to existing tasks', () => {
+  it('maps an allowlisted completion with server version', () => {
+    const draft = extractDraft({
+      kind: 'draft_task_change',
+      draft_task_change: {task_id: 'abc', version: 4, operation: 'complete'},
+    })
+    expect(draft).toEqual({
+      kind: 'task_change',
+      payload: {task_id: 'abc', version: 4, operation: 'complete'},
+    })
+  })
+  it('does not execute unknown operations or arbitrary endpoints', () => {
+    expect(extractDraft({
+      kind: 'draft_task_change',
+      draft_task_change: {task_id: 'abc', version: 1, operation: 'transfer_money'},
+    })).toBeNull()
+  })
+  it('maps an update only with allowlisted fields', () => {
+    const draft = extractDraft({
+      kind: 'draft_task_change',
+      draft_task_change: {
+        task_id: 'abc', version: 2, operation: 'update',
+        title: 'New title', duration_minutes: 50, hidden_field: 'ignored',
+      },
+    })
+    expect(draft.payload).toEqual({
+      task_id:'abc', version:2, operation:'update',
+      title:'New title', duration_minutes:50,
+    })
+  })
+})
