@@ -8,6 +8,7 @@ const Landing   = lazy(() => import('../pages/Landing'))
 const Dashboard = lazy(() => import('../pages/Dashboard'))
 const Calendar  = lazy(() => import('../pages/Calendar'))
 const Assistant = lazy(() => import('../pages/Assistant'))
+const Goals     = lazy(() => import('../pages/Goals'))
 const Profile   = lazy(() => import('../pages/Profile'))
 
 function PageLoader() {
@@ -63,6 +64,10 @@ export default function AppRouter() {
               <AppShell><Assistant /></AppShell>
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/goals"
+          element={<ProtectedRoute><AppShell><Goals /></AppShell></ProtectedRoute>}
         />
         <Route
           path="/profile"
