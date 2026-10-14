@@ -110,8 +110,12 @@ export default function AssistantV2() {
     if (!draft || busy) return
     const actionLabel = draft.kind === 'task_change'
       ? draft.payload.operation + ' task ' + draft.payload.task_id
+      : draft.kind === 'goal_change'
+      ? draft.payload.operation + ' goal ' + draft.payload.goal_id
+      : draft.kind === 'decomposition'
+      ? 'Decompose task: ' + draft.payload.task_title + ' into ' + (draft.payload.subtasks?.length || 0) + ' subtasks'
       : 'Save ' + draft.kind + ': ' + draft.payload.title
-    if (!window.confirm('Confirm this ChronoMind operation?\\n\\n' + actionLabel)) return
+    if (!window.confirm('Confirm this ChronoMind operation?\n\n' + actionLabel)) return
     setBusy(true)
     setError('')
     try {
@@ -127,14 +131,36 @@ export default function AssistantV2() {
           response = await api.patch(url, { version, ...patch })
         }
         if (![200, 204].includes(response.status)) throw new Error('Task action was not confirmed')
+      } else if (draft.kind === 'goal_change') {
+        const { goal_id, operation, ...changes } = draft.payload
+        const url = '/api/v2/goals/' + encodeURIComponent(goal_id)
+        if (operation === 'delete') {
+          response = await api.delete(url)
+        } else {
+          const patch = ['complete', 'pause', 'archive'].includes(operation)
+            ? { status: operation === 'complete' ? 'completed' : operation === 'pause' ? 'paused' : 'archived' }
+            : changes
+          response = await api.patch(url, patch)
+        }
+        if (![200, 204].includes(response.status)) throw new Error('Goal action was not confirmed')
+      } else if (draft.kind === 'decomposition') {
+        response = await api.post(`/api/v2/tasks/${encodeURIComponent(draft.payload.task_id)}/decompose`, {
+          subtasks: draft.payload.subtasks,
+          apply: true
+        })
+        if (response.status !== 200) throw new Error('Decomposition could not be applied')
       } else {
         const url = draft.kind === 'task' ? '/api/v2/tasks' : '/api/v2/goals'
         response = await api.post(url, draft.payload)
         if (response.status !== 201) throw new Error('Storage did not confirm creation')
       }
       setHistory(existing => existing.map(item => item.id === entry.id ? { ...item, saved: true } : item))
-      toast.success(draft.kind === 'task_change' ? 'Task action saved to PostgreSQL'
-        : draft.kind === 'task' ? 'Task saved to PostgreSQL' : 'Goal saved to PostgreSQL')
+      toast.success(
+        draft.kind === 'task_change' ? 'Task action saved to PostgreSQL'
+        : draft.kind === 'goal_change' ? 'Goal action saved to PostgreSQL'
+        : draft.kind === 'decomposition' ? 'Subtasks generated and committed to PostgreSQL'
+        : draft.kind === 'task' ? 'Task saved to PostgreSQL' : 'Goal saved to PostgreSQL'
+      )
       await readBriefing()
     } catch (err) {
       const message = friendlyError(err)
@@ -197,25 +223,42 @@ export default function AssistantV2() {
                 <strong>ChronoMind:</strong> {entry.decision?.message}
                 {entry.mode === 'fallback' && <p className="text-xs text-amber-700 mt-2">AI provider unavailable — deterministic fallback used.</p>}
               </div>
-              {extractDraft(entry.decision) && (
-                <div className="rounded-xl border border-peach/40 p-4 space-y-2">
-                  <p className="text-xs uppercase font-semibold text-peach-dark flex gap-2 items-center">
-                    <ShieldCheck className="w-4 h-4" /> Awaiting your confirmation
-                  </p>
-                  <p className="font-semibold">{extractDraft(entry.decision).payload.title ||
-                    (extractDraft(entry.decision).payload.operation + ' task ' + extractDraft(entry.decision).payload.task_id)}</p>
-                  {extractDraft(entry.decision).kind === 'task' && (
-                    <p className="text-sm text-dark-muted">{extractDraft(entry.decision).payload.duration_minutes} minutes</p>
-                  )}
-                  {entry.saved ? <p className="text-green-700 text-sm">Saved successfully.</p> : (
-                    <button type="button" disabled={busy} onClick={() => saveDraft(entry)} className="btn-primary text-sm">
-                      Confirm {extractDraft(entry.decision).kind === 'task_change'
-                        ? extractDraft(entry.decision).payload.operation + ' task'
-                        : 'save ' + extractDraft(entry.decision).kind}
-                    </button>
-                  )}
-                </div>
-              )}
+              {extractDraft(entry.decision) && (() => {
+                const draft = extractDraft(entry.decision)
+                return (
+                  <div className="rounded-xl border border-peach/40 p-4 space-y-2">
+                    <p className="text-xs uppercase font-semibold text-peach-dark flex gap-2 items-center">
+                      <ShieldCheck className="w-4 h-4" /> Awaiting your confirmation
+                    </p>
+                    <p className="font-semibold">{
+                      draft.kind === 'task_change' ? `${draft.payload.operation.toUpperCase()} Task (ID: ${draft.payload.task_id})` :
+                      draft.kind === 'goal_change' ? `${draft.payload.operation.toUpperCase()} Goal (ID: ${draft.payload.goal_id})` :
+                      draft.kind === 'decomposition' ? `Decompose: ${draft.payload.task_title || 'Task'} (${draft.payload.subtasks.length} subtasks)` :
+                      draft.payload.title
+                    }</p>
+                    {draft.kind === 'task' && (
+                      <p className="text-sm text-dark-muted">{draft.payload.duration_minutes} minutes · {draft.payload.importance}</p>
+                    )}
+                    {draft.kind === 'decomposition' && (
+                      <ul className="text-xs text-dark-muted list-disc pl-4 space-y-1">
+                        {draft.payload.subtasks.map((st, i) => (
+                          <li key={i}>{st.title} ({st.duration_minutes}m)</li>
+                        ))}
+                      </ul>
+                    )}
+                    {entry.saved ? <p className="text-green-700 text-sm">Saved successfully.</p> : (
+                      <button type="button" disabled={busy} onClick={() => saveDraft(entry)} className="btn-primary text-sm">
+                        Confirm {
+                          draft.kind === 'task_change' ? draft.payload.operation + ' task' :
+                          draft.kind === 'goal_change' ? draft.payload.operation + ' goal' :
+                          draft.kind === 'decomposition' ? 'apply decomposition' :
+                          'save ' + draft.kind
+                        }
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           ))}
           <form onSubmit={submit} className="space-y-3 pt-3 border-t">

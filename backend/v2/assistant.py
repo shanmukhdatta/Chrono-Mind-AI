@@ -87,12 +87,49 @@ class DraftTaskChange(BaseModel):
         return self
 
 
+class DraftGoalChange(BaseModel):
+    goal_id: str = Field(min_length=1, max_length=36)
+    operation: Literal["update", "complete", "pause", "archive", "delete"]
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=4000)
+
+    @model_validator(mode="after")
+    def validate_goal_changes(self):
+        has_edits = self.title is not None or self.description is not None
+        if self.operation == "update" and not has_edits:
+            raise ValueError("Update draft needs at least one change")
+        if self.operation != "update" and has_edits:
+            raise ValueError("Only an update operation can contain edits")
+        if self.title is not None:
+            if not self.title.strip():
+                raise ValueError("Goal title is blank")
+            self.title = self.title.strip()
+        return self
+
+
+class DraftDecomposition(BaseModel):
+    task_id: str = Field(min_length=1, max_length=36)
+    task_title: str = Field(min_length=1, max_length=160)
+    subtasks: list[dict] = Field(default_factory=list)
+
+
+class DraftScheduleQuery(BaseModel):
+    query_type: Literal["today", "week", "overdue", "summary"]
+    items: list[dict] = Field(default_factory=list)
+
+
 class AssistantDecision(BaseModel):
-    kind: Literal["answer", "draft_task", "draft_goal", "draft_task_change"]
+    kind: Literal[
+        "answer", "draft_task", "draft_goal", "draft_task_change",
+        "draft_goal_change", "draft_decomposition", "draft_schedule_query"
+    ]
     message: str = Field(min_length=1, max_length=1200)
     draft_task: DraftTask | None = None
     draft_goal: DraftGoal | None = None
     draft_task_change: DraftTaskChange | None = None
+    draft_goal_change: DraftGoalChange | None = None
+    draft_decomposition: DraftDecomposition | None = None
+    draft_schedule_query: DraftScheduleQuery | None = None
 
     @model_validator(mode="after")
     def check_draft(self):
@@ -102,8 +139,15 @@ class AssistantDecision(BaseModel):
             raise ValueError("Missing goal draft")
         if self.kind == "draft_task_change" and self.draft_task_change is None:
             raise ValueError("Missing task-change draft")
+        if self.kind == "draft_goal_change" and self.draft_goal_change is None:
+            raise ValueError("Missing goal-change draft")
+        if self.kind == "draft_decomposition" and self.draft_decomposition is None:
+            raise ValueError("Missing decomposition draft")
+        if self.kind == "draft_schedule_query" and self.draft_schedule_query is None:
+            raise ValueError("Missing schedule-query draft")
         if self.kind == "answer" and any(x is not None for x in (
-            self.draft_task, self.draft_goal, self.draft_task_change
+            self.draft_task, self.draft_goal, self.draft_task_change,
+            self.draft_goal_change, self.draft_decomposition, self.draft_schedule_query
         )):
             raise ValueError("Answer cannot contain a write operation")
         if self.kind != "draft_task":
@@ -112,6 +156,12 @@ class AssistantDecision(BaseModel):
             self.draft_goal = None
         if self.kind != "draft_task_change":
             self.draft_task_change = None
+        if self.kind != "draft_goal_change":
+            self.draft_goal_change = None
+        if self.kind != "draft_decomposition":
+            self.draft_decomposition = None
+        if self.kind != "draft_schedule_query":
+            self.draft_schedule_query = None
         return self
 
 

@@ -49,6 +49,7 @@ class TaskCreate(BaseModel):
     importance: Literal["important", "not_important"] = "important"
     deadline_at: datetime | None = None
     goal_id: str | None = None
+    parent_task_id: str | None = None
 
     @field_validator("title")
     @classmethod
@@ -72,6 +73,7 @@ class TaskUpdate(BaseModel):
     status: Literal["pending", "completed", "archived"] | None = None
     deadline_at: datetime | None = None
     goal_id: str | None = None
+    parent_task_id: str | None = None
     version: int = Field(ge=1)
 
     @field_validator("deadline_at")
@@ -91,6 +93,7 @@ class TaskOut(BaseModel):
     status: str
     deadline_at: datetime | None
     goal_id: str | None
+    parent_task_id: str | None = None
     version: int
 
 

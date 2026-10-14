@@ -3,12 +3,16 @@ from collections import defaultdict
 from datetime import datetime, time, timezone
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
-from .db import get_session
-from .models import BehaviorConsent, BehaviorEvent, FixedEvent, Goal, Preference, ScheduleBlock, Task, TaskDependency
+from .db import get_or_create_user, get_session
+from .models import (
+    BehaviorConsent, BehaviorEvent, FixedEvent, Goal, InAppNotification,
+    PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, TaskDependency, User
+)
 from .priority import score_task
 from .personalization import preferred_work_hour
 from .planner import BusyInterval, PlanningPreferences, PlanningTask
@@ -82,6 +86,10 @@ def get_preview(
     active_goal_ids = set(db.scalars(select(Goal.id).where(
         Goal.owner_uid == uid, Goal.status == "active"
     )).all())
+    dependent_counts = defaultdict(int)
+    for dep in dependencies:
+        dependent_counts[dep.depends_on_id] += 1
+
     tasks = [
         PlanningTask(
             row.id, row.title, max(0, row.duration_minutes - scheduled[row.id]),
@@ -90,7 +98,10 @@ def get_preview(
             if blockers[row.id] else None,
             score_task(
                 row.importance, _aware(row.deadline_at),
-                row.goal_id in active_goal_ids, generated
+                row.goal_id in active_goal_ids, generated,
+                dependent_count=dependent_counts[row.id],
+                is_blocked=bool(blockers[row.id]),
+                duration_minutes=row.duration_minutes,
             ).score,
             row.splittable,
         )
@@ -127,3 +138,92 @@ def get_preview(
             for task in suggestion.unscheduled
         ],
     }
+
+
+class ReplanTriggerRequest(BaseModel):
+    days: int = Field(default=7, ge=1, le=14)
+    trigger: str = Field(default="user_request", max_length=60)
+    create_proposal: bool = True
+    notify: bool = True
+
+
+@router.post("/replan")
+def trigger_adaptive_replan(
+    body: ReplanTriggerRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    uid = user["uid"]
+    get_or_create_user(db, uid)
+    db.scalar(select(User).where(User.uid == uid).with_for_update())
+
+    preview = get_preview(days=body.days, user=user, db=db)
+    if not preview["blocks"]:
+        return {
+            "proposal_id": None,
+            "preview": preview,
+            "trigger": body.trigger,
+            "message": "No unblocked tasks fit this planning horizon. Keep current schedule.",
+            "notification_sent": False,
+        }
+
+    if not body.create_proposal:
+        return {
+            "proposal_id": None,
+            "preview": preview,
+            "trigger": body.trigger,
+            "message": "Preview generated without creating a proposal.",
+            "notification_sent": False,
+        }
+
+    from .proposals_api import current_prefs
+    ids = {row["task_id"] for row in preview["blocks"]}
+    tasks = db.scalars(select(Task).where(Task.owner_uid == uid, Task.id.in_(ids))).all()
+    versions = {task.id: task.version for task in tasks}
+
+    plan = PlanProposal(
+        owner_uid=uid,
+        proposed_blocks=preview["blocks"],
+        unscheduled=preview["unscheduled"],
+        preferences_snapshot=current_prefs(db, uid),
+        task_versions=versions,
+        planning_trace=preview.get("decision_trace", {}),
+        committed_block_ids=[],
+    )
+    db.add(plan)
+    db.flush()
+
+    db.add(PlanningDecisionLog(
+        owner_uid=uid,
+        proposal_id=plan.id,
+        action="replanned",
+        reason_codes=["ADAPTIVE_REPLAN", f"TRIGGER_{body.trigger.upper()}", "USER_REVIEW_REQUIRED"],
+        before_blocks=[],
+        after_blocks=preview["blocks"],
+    ))
+
+    notification_sent = False
+    if body.notify:
+        now_utc = datetime.now(timezone.utc)
+        key = f"replan:{plan.id}:{int(now_utc.timestamp())}"
+        clean_trigger = body.trigger.replace("_", " ")
+        db.add(InAppNotification(
+            owner_uid=uid,
+            kind="replan_available",
+            dedupe_key=key,
+            message=f"Adaptive replan ready: {len(preview['blocks'])} sessions proposed ({clean_trigger}).",
+            created_at=now_utc,
+        ))
+        notification_sent = True
+
+    db.commit()
+    db.refresh(plan)
+
+    return {
+        "proposal_id": plan.id,
+        "preview": preview,
+        "trigger": body.trigger,
+        "message": f"Adaptive plan generated ({len(preview['blocks'])} sessions proposed). Review and approve in Approvals.",
+        "notification_sent": notification_sent,
+    }
+

@@ -2,11 +2,13 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
 from .db import get_or_create_user, get_session
+from .decomposition import decompose_task_logic
 from .models import Goal, Task, Preference, User, ScheduleBlock, TaskDependency, RecurrenceOccurrence, FocusSession, InAppNotification
 from .schemas import GoalCreate, GoalOut, GoalUpdate, TaskCreate, TaskOut, TaskUpdate, PreferencesOut, PreferencesUpdate
 
@@ -169,6 +171,119 @@ def delete_task(task_id: str, user: dict = Depends(get_current_user), db: Sessio
     ).values(source_task_id=None))
     db.delete(row)
     db.commit()
+
+
+class DecomposeInput(BaseModel):
+    num_subtasks: int = Field(default=3, ge=2, le=5)
+    prompt_hint: str | None = Field(default=None, max_length=500)
+    apply: bool = False
+
+
+@router.post("/tasks/{task_id}/decompose")
+def decompose_task_endpoint(
+    task_id: str,
+    body: DecomposeInput,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    uid = user["uid"]
+    db.scalar(select(User).where(User.uid == uid).with_for_update())
+    task = _owned(db, Task, uid, task_id)
+    if task.status != "pending":
+        raise HTTPException(409, "Only pending tasks can be decomposed")
+    if task.duration_minutes < 20:
+        raise HTTPException(409, "Task duration is too short to decompose (minimum 20 minutes)")
+
+    generated_subtasks = decompose_task_logic(
+        task_title=task.title,
+        task_desc=task.description or "",
+        duration_minutes=task.duration_minutes,
+        deadline_at=task.deadline_at,
+        num_subtasks=body.num_subtasks,
+        prompt_hint=body.prompt_hint,
+    )
+
+    if not body.apply:
+        return {
+            "parent_task_id": task.id,
+            "parent_title": task.title,
+            "subtasks": generated_subtasks,
+            "dependencies": [
+                {"step": i + 1, "depends_on_step": i} for i in range(1, len(generated_subtasks))
+            ],
+            "applied": False,
+        }
+
+    # Apply: create subtasks and dependencies
+    created_tasks = []
+    for item in generated_subtasks:
+        sub = Task(
+            owner_uid=uid,
+            parent_task_id=task.id,
+            goal_id=task.goal_id,
+            title=item["title"],
+            description=item["description"],
+            duration_minutes=item["duration_minutes"],
+            splittable=item["splittable"],
+            importance=task.importance,
+            deadline_at=task.deadline_at,
+            status="pending",
+        )
+        db.add(sub)
+        db.flush()
+        created_tasks.append(sub)
+
+    dependencies_created = []
+    for i in range(1, len(created_tasks)):
+        dep = TaskDependency(
+            owner_uid=uid,
+            task_id=created_tasks[i].id,
+            depends_on_id=created_tasks[i - 1].id,
+        )
+        db.add(dep)
+        dependencies_created.append({
+            "task_id": created_tasks[i].id,
+            "depends_on_id": created_tasks[i - 1].id,
+        })
+
+    task.description = (task.description + f"\n\n[Decomposed into {len(created_tasks)} subtasks]").strip()
+    task.version += 1
+
+    db.commit()
+    for sub in created_tasks:
+        db.refresh(sub)
+    db.refresh(task)
+
+    return {
+        "parent_task_id": task.id,
+        "parent_title": task.title,
+        "subtasks": [
+            {
+                "id": sub.id,
+                "title": sub.title,
+                "description": sub.description,
+                "duration_minutes": sub.duration_minutes,
+                "importance": sub.importance,
+                "status": sub.status,
+            }
+            for sub in created_tasks
+        ],
+        "dependencies": dependencies_created,
+        "applied": True,
+    }
+
+
+@router.get("/tasks/{task_id}/subtasks", response_model=list[TaskOut])
+def list_subtasks(
+    task_id: str,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    uid = user["uid"]
+    _owned(db, Task, uid, task_id)
+    return db.scalars(
+        select(Task).where(Task.owner_uid == uid, Task.parent_task_id == task_id).order_by(Task.created_at, Task.id)
+    ).all()
 
 
 @router.get("/preferences", response_model=PreferencesOut)

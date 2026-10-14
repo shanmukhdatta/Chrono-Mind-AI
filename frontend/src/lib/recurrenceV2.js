@@ -5,8 +5,8 @@ export function recurrencePayload(form) {
   if (!Number.isInteger(length) || length < 1 || length > 1440) {
     throw new Error('Duration must be between 1 and 1440 minutes')
   }
-  if (!['daily', 'weekly'].includes(form.frequency)) {
-    throw new Error('Choose daily or weekly recurrence')
+  if (!['daily', 'weekly', 'monthly'].includes(form.frequency)) {
+    throw new Error('Choose daily, weekly, or monthly recurrence')
   }
   const days = Array.isArray(form.weekdays) ? [...new Set(form.weekdays.map(Number))].sort() : []
   if (form.frequency === 'weekly' && (days.length === 0 || days.some(d => !Number.isInteger(d) || d < 0 || d > 6))) {

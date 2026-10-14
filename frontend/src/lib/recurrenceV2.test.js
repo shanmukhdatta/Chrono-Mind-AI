@@ -22,4 +22,9 @@ describe('recurrence form', () => {
     expect(() => recurrencePayload({...base,end_date:'2026-10-14'})).toThrow(/End date/)
     expect(() => recurrencePayload({...base,duration_minutes:0})).toThrow(/Duration/)
   })
+  it('supports monthly recurrence without requiring weekdays', () => {
+    const value = recurrencePayload({...base, frequency: 'monthly'})
+    expect(value.frequency).toBe('monthly')
+    expect(value.weekdays).toEqual([])
+  })
 })

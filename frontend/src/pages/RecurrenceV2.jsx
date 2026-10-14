@@ -97,7 +97,7 @@ export default function RecurrenceV2() {
           <p className="text-peach-dark text-sm font-semibold">Build repeatable routines</p>
           <h1 className="text-3xl font-bold text-dark">Recurring tasks</h1>
           <p className="text-sm text-dark-muted mt-2">
-            Daily or weekly templates generate task occurrences without duplicating existing records.
+            Daily, weekly, or monthly templates generate task occurrences without duplicating existing records.
           </p>
         </div>
         <button type="button" disabled={demo} className="btn-primary flex gap-2 items-center justify-center"
@@ -120,6 +120,7 @@ export default function RecurrenceV2() {
                 <select className="input-field mt-1" value={frequency} onChange={e => setFrequency(e.target.value)}>
                   <option value="daily">Every day</option>
                   <option value="weekly">Selected weekdays</option>
+                  <option value="monthly">Monthly</option>
                 </select>
               </label>
               <label className="block text-sm font-medium">Duration (minutes)

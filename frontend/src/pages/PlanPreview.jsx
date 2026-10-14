@@ -46,6 +46,23 @@ export default function PlanPreview() {
     }
   }
 
+  const triggerAdaptiveReplan = async (triggerType = 'manual_request') => {
+    setBusy(true)
+    setError('')
+    try {
+      const response = await api.post('/api/v2/planning/replan', {
+        days,
+        trigger: triggerType,
+        notes: `User triggered adaptive replan via UI (${triggerType})`
+      })
+      navigate('/approvals?planId=' + encodeURIComponent(response.data.plan_id))
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const summary = summarizePlan(preview)
 
   return (
@@ -77,18 +94,49 @@ export default function PlanPreview() {
       )}
 
       {!demo && (
-        <section className="flex flex-col sm:flex-row sm:items-end gap-3 p-4 bg-white border border-gray-100 shadow-sm rounded-2xl">
-          <label className="text-sm font-semibold">Plan for
-            <select className="input-field mt-1" value={days} onChange={e => setDays(Number(e.target.value))}>
-              <option value={3}>Next 3 days</option>
-              <option value={7}>Next 7 days</option>
-              <option value={14}>Next 14 days</option>
-            </select>
-          </label>
-          <button className="btn-primary flex gap-2 items-center justify-center" type="button" disabled={busy}
-            onClick={generate}>
-            <RefreshCw className="w-4 h-4" /> {busy ? 'Calculating...' : 'Generate preview'}
-          </button>
+        <section className="p-4 bg-white border border-gray-100 shadow-sm rounded-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm font-semibold">Plan for
+                <select className="input-field mt-1" value={days} onChange={e => setDays(Number(e.target.value))}>
+                  <option value={3}>Next 3 days</option>
+                  <option value={7}>Next 7 days</option>
+                  <option value={14}>Next 14 days</option>
+                </select>
+              </label>
+              <button className="btn-primary flex gap-2 items-center justify-center" type="button" disabled={busy}
+                onClick={generate}>
+                <RefreshCw className="w-4 h-4" /> {busy ? 'Calculating...' : 'Generate preview'}
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0">
+              <span className="text-xs text-dark-muted font-medium">Or trigger safe adaptive replan:</span>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => triggerAdaptiveReplan('conflict_detected')}
+                className="px-3 py-1.5 text-xs font-medium border border-peach/50 text-peach-dark rounded-xl hover:bg-peach/10 disabled:opacity-50"
+              >
+                Resolve Conflicts
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => triggerAdaptiveReplan('deadline_risk')}
+                className="px-3 py-1.5 text-xs font-medium border border-amber-400 text-amber-800 rounded-xl hover:bg-amber-50 disabled:opacity-50"
+              >
+                Deadline Risk Replan
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => triggerAdaptiveReplan('manual_request')}
+                className="px-3 py-1.5 text-xs font-medium bg-peach/10 text-peach-dark rounded-xl hover:bg-peach/20 disabled:opacity-50"
+              >
+                Full Adaptive Replan
+              </button>
+            </div>
+          </div>
         </section>
       )}
 

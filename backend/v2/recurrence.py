@@ -44,15 +44,15 @@ class SeriesInput(BaseModel):
         self.title = self.title.strip()
         if self.importance not in ("important", "not_important"):
             raise ValueError("Unsupported importance")
-        if self.frequency not in ("daily", "weekly"):
-            raise ValueError("Frequency must be daily or weekly")
+        if self.frequency not in ("daily", "weekly", "monthly"):
+            raise ValueError("Frequency must be daily, weekly, or monthly")
         if self.frequency == "weekly" and (not self.weekdays or len(set(self.weekdays)) != len(self.weekdays)
                 or any(not 0 <= day <= 6 for day in self.weekdays)):
             raise ValueError("Weekly recurrence requires unique weekdays 0=Mon..6=Sun")
         if self.end_date and self.end_date < self.start_date:
             raise ValueError("End date precedes start date")
-        if self.frequency == "daily" and self.weekdays:
-            raise ValueError("Daily recurrence must not include weekdays")
+        if self.frequency in ("daily", "monthly") and self.weekdays:
+            raise ValueError("Daily and monthly recurrence must not include weekdays")
         return self
 
 
@@ -90,10 +90,14 @@ def upcoming_dates(series: RecurrenceSeries, today: date, days: int):
         current = start + timedelta(days=offset)
         if series.end_date and current > series.end_date:
             break
-        if series.frequency == "daily" or current.weekday() in {
-            int(n) for n in series.weekdays.split(",") if n
-        }:
+        if series.frequency == "daily":
             yield current
+        elif series.frequency == "weekly":
+            if current.weekday() in {int(n) for n in series.weekdays.split(",") if n}:
+                yield current
+        elif series.frequency == "monthly":
+            if current.day == series.start_date.day:
+                yield current
 
 
 @router.get("")
@@ -129,7 +133,7 @@ def create_series(body: SeriesInput, user: dict = Depends(get_current_user), db:
     db.add(row)
     db.commit()
     db.refresh(row)
-    return {"id": row.id, "active": row.active}
+    return {"id": row.id, "active": row.active, "frequency": row.frequency, "title": row.title}
 
 
 @router.post("/{series_id}/pause")
@@ -150,18 +154,10 @@ def resume_series(series_id: str, user: dict = Depends(get_current_user), db: Se
     return {"id": row.id, "active": row.active}
 
 
-@router.post("/{series_id}/materialize")
-def materialize_series(
-    series_id: str, days: int = Query(30, ge=1, le=90),
-    user: dict = Depends(get_current_user),
-    db: Session = Depends(get_session),
-):
-    uid = user["uid"]
-    # Shared owner-row lock serializes with other V2 calendar write protocols.
-    db.scalar(select(User).where(User.uid == uid).with_for_update())
-    series = owned(db, uid, series_id)
+def materialize_series_occurrences(db: Session, uid: str, series: RecurrenceSeries, days: int = 30) -> tuple[int, int, int]:
+    """Materialize missing occurrences for a series within a horizon. Caller commits transaction."""
     if not series.active:
-        raise HTTPException(409, "Recurrence series is paused")
+        return 0, 0, 0
     today = datetime.now(ZoneInfo(series.timezone)).date()
     existing = {
         row.occurrence_date for row in db.scalars(select(RecurrenceOccurrence).where(
@@ -174,13 +170,9 @@ def materialize_series(
         )).all()
     }
     pending = [day for day in upcoming_dates(series, today, days) if day not in existing and day not in skipped]
-    # Fail whole request on any ambiguous timezone date before writing anything.
     due_dates = {}
-    try:
-        for day in pending:
-            due_dates[day] = due_instant(day, series.due_time, series.timezone) if series.due_time else None
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
+    for day in pending:
+        due_dates[day] = due_instant(day, series.due_time, series.timezone) if series.due_time else None
 
     for day in pending:
         task = Task(
@@ -197,8 +189,26 @@ def materialize_series(
             owner_uid=uid, series_id=series.id,
             occurrence_date=day, task_id=task.id,
         ))
-    db.commit()
-    return {"series_id": series.id, "created": len(pending), "already_present": len(existing), "skipped": len(skipped)}
+    return len(pending), len(existing), len(skipped)
+
+
+@router.post("/{series_id}/materialize")
+def materialize_series(
+    series_id: str, days: int = Query(30, ge=1, le=90),
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    uid = user["uid"]
+    db.scalar(select(User).where(User.uid == uid).with_for_update())
+    series = owned(db, uid, series_id)
+    if not series.active:
+        raise HTTPException(409, "Recurrence series is paused")
+    try:
+        created, existing_count, skipped_count = materialize_series_occurrences(db, uid, series, days)
+        db.commit()
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"series_id": series.id, "created": created, "already_present": existing_count, "skipped": skipped_count}
 
 
 @router.post("/{series_id}/skip")
