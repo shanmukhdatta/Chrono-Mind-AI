@@ -17,7 +17,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
-from .db import get_session
+from .db import get_session, get_or_create_user
 from .models import AssistantMetric, Goal, Preference, Task
 from .llm_router import choose_route, simple_answer
 
@@ -179,6 +179,7 @@ def chat(
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_session),
 ):
+    get_or_create_user(db, user["uid"])
     context = context_for_user(db, user["uid"])
     route = choose_route(request.message)
     usage: dict = {}

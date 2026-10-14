@@ -1,6 +1,6 @@
 # ChronoMind AI V2 — Local integration acceptance (Antigravity / Windows)
 
-**Branch to inspect:** `v2/integration-handoff`. This branch includes the preceding V2 feature branches without modifying `main`. The deployment and Firestore migration have **not** been performed. All feature PRs remain review-only until local evidence is returned and the user approves merging.
+**Branch to inspect after PR #39 is merged:** `main`. The release-hardening branch was created from main. Legacy Firestore migration and production deployment have NOT been performed. Run actual integration tests before claiming deployment readiness.
 
 ## 1. Clone and choose the integrated branch
 
@@ -8,12 +8,13 @@
 git clone https://github.com/shanmukhdatta/Chrono-Mind-AI.git
 cd Chrono-Mind-AI
 git fetch origin
-git switch --track origin/v2/integration-handoff
+git switch main
+git pull --ff-only origin main
 git status --short
 git rev-parse HEAD
 ```
 
-If already cloned: `git fetch origin; git switch --track origin/v2/integration-handoff` (or `git switch v2/integration-handoff; git pull --ff-only`). Working tree should be clean.
+If already cloned: `git fetch origin; git switch main; git pull --ff-only origin main`. Working tree should be clean.
 
 ## 2. Backend: isolated tests before configuring secrets
 
@@ -43,7 +44,7 @@ No incomplete UI should be presented as operational. Set private frontend Fireba
 
 ## 4. PostgreSQL and Firebase setup
 
-Use a throwaway/local PostgreSQL database for integration, not production. Put `DATABASE_URL` in your *private shell/environment*, for example a local-only `postgresql+psycopg://USER:LOCAL_PASSWORD@localhost:5432/chronomind`. Set Firebase Admin credentials as described in `backend/.env.example` using private local files or an authorized service connection. Set `CORS_ORIGINS=http://localhost:5173`. Do not commit or paste actual credentials into chat.
+Use a throwaway/local PostgreSQL database for integration, not production. From the repository root start the bundled local database with `docker compose -f compose.v2.yaml up -d` (Docker Desktop required). Put `DATABASE_URL` in your *private shell/environment*, for example a local-only `postgresql+psycopg://USER:LOCAL_PASSWORD@localhost:5432/chronomind`. Set Firebase Admin credentials as described in `backend/.env.example` using private local files or an authorized service connection. Set `CORS_ORIGINS=http://localhost:5173`. Do not commit or paste actual credentials into chat.
 
 ```powershell
 cd ..\backend
@@ -92,3 +93,14 @@ Production PostgreSQL migrations, full Firestore subcollection migration, Fireba
 ## 9. Return this evidence to the implementation chat
 
 Paste the complete test output for backend pytest, frontend Vitest/build, Alembic, and any live API/UI failures. Include `git rev-parse HEAD`, `git status --short`, and the exact action/URL that failed. Redact all secrets and user data. Do not merge all stacked PRs at once merely because CI is green.
+
+## 10. Additional acceptance after PR #39
+
+- Apply **Alembic through revision 0011** and confirm database table/schema upgrades with actual local PostgreSQL. Confirm the `v2_schedule_blocks.source` column handles `plan:<uuid>` without truncation.
+- Create a non-splittable task exceeding 90 minutes and verify the preview labels it unscheduled; create a splittable longer task and verify block generation.
+- Validate task duration reductions cannot go below booked minutes; deadline edits conflicting with booked sessions return 409; task completion removes only future scheduled blocks.
+- Generate and review a planning proposal; move a block in Approval Center and verify POST approval writes the revised schedule, while rejected/past/conflicting moves do not save.
+- Inspect user-owned `GET /api/v2/plans/{id}/history` to confirm the before/after edit and approval reason codes. Test another account gets 404.
+- Verify fast/reasoning/no-LLM assistant routing and `GET /api/v2/assistant/metrics`, with no Groq key as well as a valid test key. No raw messages should be stored in telemetry.
+- Verify jobs never run in each web worker, and no failed scheduled tasks are silently deleted.
+- Compare the **README feature audit** with actual code, and list missing/partial features separately from bugs. Implement missing core product functionality on new branches rather than claiming untested features pass.

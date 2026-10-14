@@ -28,12 +28,12 @@ def choose_route(message: str) -> ModelRoute:
         return ModelRoute("no_llm", None, "Answerable from bounded database summary")
     if any(marker in text for marker in _COMPLEX_MARKERS):
         return ModelRoute(
-            "reasoning", os.getenv("CHRONOMIND_REASONING_LLM_MODEL", "llama-3.3-70b-versatile"),
+            "reasoning", os.getenv("CHRONOMIND_LLM_REASONING_MODEL", os.getenv("CHRONOMIND_REASONING_LLM_MODEL", "llama-3.3-70b-versatile")),
             "Complex planning or decomposition request",
         )
     return ModelRoute(
-        "fast", os.getenv("CHRONOMIND_FAST_LLM_MODEL",
-        os.getenv("CHRONOMIND_LLM_MODEL", "llama-3.1-8b-instant")),
+        "fast", os.getenv("CHRONOMIND_LLM_FAST_MODEL", os.getenv("CHRONOMIND_FAST_LLM_MODEL",
+        os.getenv("CHRONOMIND_LLM_MODEL", "llama-3.1-8b-instant"))),
         "Simple natural-language intent interpretation",
     )
 
