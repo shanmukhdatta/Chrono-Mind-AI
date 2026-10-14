@@ -1,6 +1,6 @@
 """Read-only planning preview backed by PostgreSQL. Does not commit calendar changes."""
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -31,7 +31,7 @@ def get_preview(
     pref = db.get(Preference, uid)
     if pref is None:
         # Read-only preview never provisions a database user or changes preferences.
-        opts = PlanningPreferences("Asia/Kolkata", __import__("datetime").time(8), __import__("datetime").time(22), 480, 10)
+        opts = PlanningPreferences("Asia/Kolkata", time(8), time(22), 480, 10)
     else:
         opts = PlanningPreferences(pref.timezone, pref.work_start, pref.work_end, pref.max_daily_minutes, pref.min_break_minutes)
 

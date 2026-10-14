@@ -107,6 +107,11 @@ def preview_schedule(
         _check_instant(interval.end)
         if interval.end <= interval.start:
             raise ValueError("Busy interval must have positive duration")
+    if preferences.min_break_minutes:
+        occupied.extend(
+            BusyInterval(item.end, item.end + timedelta(minutes=preferences.min_break_minutes))
+            for item in existing if item.counts_as_work
+        )
     blocks = []
     unscheduled = []
 
@@ -126,15 +131,16 @@ def preview_schedule(
             if remaining <= 0:
                 break
             day = local_now.date() + timedelta(days=day_offset)
-            day_start = datetime.combine(day, preferences.work_start, zone)
-            day_end = datetime.combine(day, preferences.work_end, zone)
-            day_start = max(day_start, local_now)
+            full_day_start = datetime.combine(day, preferences.work_start, zone)
+            full_day_end = datetime.combine(day, preferences.work_end, zone)
+            day_start = max(full_day_start, local_now)
+            day_end = full_day_end
             if task.deadline_at is not None:
                 day_end = min(day_end, task.deadline_at.astimezone(zone))
             if day_end <= day_start:
                 continue
             while remaining > 0:
-                day_used = _work_minutes(occupied, day_start, day_end)
+                day_used = _work_minutes(occupied, full_day_start, full_day_end)
                 # Existing sessions and proposed sessions count toward the same cap.
                 daily_room = preferences.max_daily_minutes - day_used
                 if daily_room <= 0:
