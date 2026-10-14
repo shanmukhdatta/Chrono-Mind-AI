@@ -7,7 +7,7 @@ import { isoToDateTimeLocal, taskPayload } from '../lib/tasksV2'
 
 const empty = () => ({
   title: '', description: '', importance: 'important', duration_minutes: 30,
-  deadline_at: '', goal_id: '',
+  deadline_at: '', goal_id: '', splittable: true,
 })
 
 function message(err) {
@@ -55,6 +55,7 @@ export default function TasksV2() {
       title: item.title,
       description: item.description || '',
       duration_minutes: item.duration_minutes,
+      splittable: item.splittable,
       importance: item.importance,
       deadline_at: isoToDateTimeLocal(item.deadline_at),
       goal_id: item.goal_id || '',
@@ -171,6 +172,11 @@ export default function TasksV2() {
                   </select>
                 </label>
               </div>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={Boolean(form.splittable)}
+                  onChange={e => updateField('splittable', e.target.checked)} />
+                Allow this task to be split into shorter focus sessions
+              </label>
               <div className="flex gap-3">
                 <button className="btn-primary" type="submit" disabled={busy}>{busy ? 'Saving...' : 'Save task'}</button>
                 <button type="button" className="border rounded-xl px-4 py-2" onClick={() => setEditor(false)}>Cancel</button>

@@ -22,6 +22,7 @@ export function taskPayload(form) {
   }
   return {
     title, description: form.description || '', duration_minutes: duration,
+    splittable: form.splittable !== false,
     importance: form.importance,
     deadline_at: dateTimeLocalToIso(form.deadline_at),
     goal_id: form.goal_id || null,

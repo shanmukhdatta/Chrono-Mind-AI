@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from middleware.auth import get_current_user
 from .calendar_api import conflict
 from .db import get_or_create_user, get_session
-from .models import FixedEvent, PlanProposal, Preference, ScheduleBlock, Task, User
+from .models import FixedEvent, PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, User
 from .planning_api import get_preview
 
 router = APIRouter(prefix="/api/v2/plans", tags=["v2-approvals"])
@@ -59,6 +59,7 @@ def present(plan: PlanProposal) -> dict:
         "approved_at": plan.approved_at.isoformat() if plan.approved_at else None,
         "blocks": plan.proposed_blocks,
         "unscheduled": plan.unscheduled,
+        "decision_trace": plan.planning_trace,
         "committed_block_ids": plan.committed_block_ids,
     }
 
@@ -99,8 +100,7 @@ def verify_candidate(db: Session, uid: str, plan: PlanProposal, now: datetime):
              for row in db.scalars(select(FixedEvent).where(FixedEvent.owner_uid == uid)).all()]
     occupied_by_task = defaultdict(int)
     for block in existing:
-        start = ensure_aware(block.starts_at)
-        end = ensure_aware(block.ends_at)
+        start, end = ensure_aware(block.starts_at), ensure_aware(block.ends_at)
         if end > now:
             occupied_by_task[block.task_id] += int((end - max(start, now)).total_seconds() // 60)
 
@@ -178,9 +178,16 @@ def create_proposal(
         unscheduled=preview["unscheduled"],
         preferences_snapshot=current_prefs(db, uid),
         task_versions=versions,
+        planning_trace=preview.get("decision_trace", {}),
         committed_block_ids=[],
     )
     db.add(plan)
+    db.flush()
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="proposed",
+        reason_codes=["PRIORITY_SCORE", "CONSTRAINT_CHECKED", "USER_REVIEW_REQUIRED"],
+        before_blocks=[], after_blocks=preview["blocks"],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -192,6 +199,23 @@ def list_proposals(user: dict = Depends(get_current_user), db: Session = Depends
         PlanProposal.owner_uid == user["uid"]
     ).order_by(PlanProposal.created_at.desc()).limit(30)).all()
     return [present(row) for row in rows]
+
+
+@router.get("/{plan_id}/history")
+def proposal_history(plan_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
+    uid = user["uid"]
+    read_proposal(db, uid, plan_id)
+    records = db.scalars(select(PlanningDecisionLog).where(
+        PlanningDecisionLog.owner_uid == uid, PlanningDecisionLog.proposal_id == plan_id
+    ).order_by(PlanningDecisionLog.recorded_at, PlanningDecisionLog.id)).all()
+    return [
+        {
+            "action": record.action, "reason_codes": record.reason_codes,
+            "before_blocks": record.before_blocks, "after_blocks": record.after_blocks,
+            "recorded_at": record.recorded_at,
+        }
+        for record in records
+    ]
 
 
 @router.get("/{plan_id}")
@@ -217,6 +241,11 @@ def approve_proposal(plan_id: str, user: dict = Depends(get_current_user), db: S
     plan.committed_block_ids = ids
     plan.status = "approved"
     plan.approved_at = now
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="approved",
+        reason_codes=["USER_APPROVED", "CONSTRAINT_REVALIDATED"],
+        before_blocks=[], after_blocks=plan.proposed_blocks,
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -230,6 +259,11 @@ def reject_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Se
     if plan.status != "pending":
         raise HTTPException(409, "Only pending proposals can be rejected")
     plan.status = "rejected"
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="rejected",
+        reason_codes=["USER_REJECTED"],
+        before_blocks=[], after_blocks=[],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)
@@ -255,6 +289,11 @@ def undo_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Sess
             raise HTTPException(409, "Plan blocks were modified; cannot undo automatically")
         db.delete(block)
     plan.status = "undone"
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=plan.id, action="undone",
+        reason_codes=["USER_REQUESTED_UNDO", "ORIGINAL_BLOCKS_INTACT"],
+        before_blocks=plan.proposed_blocks, after_blocks=[],
+    ))
     db.commit()
     db.refresh(plan)
     return present(plan)

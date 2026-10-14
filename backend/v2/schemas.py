@@ -45,6 +45,7 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     description: str = Field(default="", max_length=4000)
     duration_minutes: int = Field(default=30, ge=1, le=1440)
+    splittable: bool = True
     importance: Literal["important", "not_important"] = "important"
     deadline_at: datetime | None = None
     goal_id: str | None = None
@@ -66,6 +67,7 @@ class TaskUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=160)
     description: str | None = Field(None, max_length=4000)
     duration_minutes: int | None = Field(None, ge=1, le=1440)
+    splittable: bool | None = None
     importance: Literal["important", "not_important"] | None = None
     status: Literal["pending", "completed", "archived"] | None = None
     deadline_at: datetime | None = None
@@ -84,6 +86,7 @@ class TaskOut(BaseModel):
     title: str
     description: str
     duration_minutes: int
+    splittable: bool
     importance: str
     status: str
     deadline_at: datetime | None

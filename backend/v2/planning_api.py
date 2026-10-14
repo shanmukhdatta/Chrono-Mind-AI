@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 
 from middleware.auth import get_current_user
 from .db import get_session
-from .models import BehaviorConsent, BehaviorEvent, FixedEvent, Preference, ScheduleBlock, Task, TaskDependency
+from .models import BehaviorConsent, BehaviorEvent, FixedEvent, Goal, Preference, ScheduleBlock, Task, TaskDependency
+from .priority import score_task
 from .personalization import preferred_work_hour
-from .planner import BusyInterval, PlanningPreferences, PlanningTask, preview_schedule
+from .planner import BusyInterval, PlanningPreferences, PlanningTask
+from .replanning import choose_schedule
 
 router = APIRouter(prefix="/api/v2/planning", tags=["v2-planning"])
 
@@ -70,28 +72,36 @@ def get_preview(
     for block in blocks:
         start = _aware(block.starts_at)
         end = _aware(block.ends_at)
-        # Missed past sessions are not proof of completed work. Pending tasks
-        # must be eligible for a fresh proposal rather than silently disappearing.
+        # Missed sessions are not completed work; allow new proposals for unfinished tasks.
         if end > generated:
             scheduled[block.task_id] += int((end - max(start, generated)).total_seconds() // 60)
         occupied.append(BusyInterval(start, end, counts_as_work=True))
     for event in events:
         occupied.append(BusyInterval(_aware(event.starts_at), _aware(event.ends_at)))
 
+    active_goal_ids = set(db.scalars(select(Goal.id).where(
+        Goal.owner_uid == uid, Goal.status == "active"
+    )).all())
     tasks = [
         PlanningTask(
             row.id, row.title, max(0, row.duration_minutes - scheduled[row.id]),
             row.importance, _aware(row.deadline_at),
             ("Prerequisite tasks are not yet completed: " + ", ".join(sorted(blockers[row.id])))
             if blockers[row.id] else None,
+            score_task(
+                row.importance, _aware(row.deadline_at),
+                row.goal_id in active_goal_ids, generated
+            ).score,
+            row.splittable,
         )
         for row in rows
     ]
-    suggestion = preview_schedule(tasks, occupied, opts, generated, horizon_days=days)
+    suggestion, decision_trace = choose_schedule(tasks, occupied, opts, generated, days)
     return {
         "generated_at": generated.isoformat(),
         "timezone": opts.timezone,
         "changes_committed": False,
+        "decision_trace": decision_trace,
         "personalization": {
             "applied": preferred is not None,
             "preferred_hour": preferred,
