@@ -13,6 +13,7 @@ class ModelRoute:
 _SIMPLE_QUESTIONS = (
     "how many tasks", "how many goals", "count my tasks", "my task count",
     "how many pending tasks", "how many active goals", "show briefing",
+    "list my pending tasks", "show my pending tasks",
 )
 _COMPLEX_MARKERS = (
     "replan", "reorganize", "optimize", "split this task", "break down",
