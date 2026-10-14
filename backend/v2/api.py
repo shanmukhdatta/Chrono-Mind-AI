@@ -135,7 +135,7 @@ def patch_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_current_
         db.execute(delete(ScheduleBlock).where(
             ScheduleBlock.owner_uid == uid, ScheduleBlock.task_id == task_id,
             ScheduleBlock.starts_at >= now,
-        ))
+        ).execution_options(synchronize_session=False))
     db.commit()
     return _owned(db, Task, uid, task_id)
 
