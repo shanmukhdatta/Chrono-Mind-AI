@@ -25,6 +25,11 @@ class ProposalRequest(BaseModel):
     days: int = Field(default=7, ge=1, le=14)
 
 
+class MoveBlockRequest(BaseModel):
+    block_index: int = Field(ge=0, le=499)
+    starts_at: datetime
+
+
 def current_prefs(db: Session, uid: str) -> dict:
     pref = db.get(Preference, uid)
     if pref is None:
@@ -221,6 +226,46 @@ def proposal_history(plan_id: str, user: dict = Depends(get_current_user), db: S
 @router.get("/{plan_id}")
 def get_proposal(plan_id: str, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     return present(read_proposal(db, user["uid"], plan_id))
+
+
+@router.put("/{plan_id}/blocks")
+def move_proposed_block(
+    plan_id: str, body: MoveBlockRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """A human may reposition one pending session; no calendar write occurs."""
+    uid = user["uid"]
+    lock_owner(db, uid)
+    proposal = read_proposal(db, uid, plan_id, lock=True)
+    if proposal.status != "pending":
+        raise HTTPException(409, "Only pending proposals can be edited")
+    original = list(proposal.proposed_blocks)
+    if body.block_index >= len(original):
+        raise HTTPException(404, "Proposed session not found")
+    if body.starts_at.tzinfo is None or body.starts_at.utcoffset() is None:
+        raise HTTPException(422, "Session start requires an explicit timezone offset")
+    now = datetime.now(timezone.utc)
+    begins = body.starts_at.astimezone(timezone.utc)
+    if begins > ensure_aware(proposal.created_at) + timedelta(days=14):
+        raise HTTPException(409, "Move is outside the 14-day horizon")
+    edited = [dict(row) for row in original]
+    row = edited[body.block_index]
+    length = datetime.fromisoformat(row["ends_at"]) - datetime.fromisoformat(row["starts_at"])
+    if length.total_seconds() <= 0:
+        raise HTTPException(409, "Corrupted original proposal")
+    row["starts_at"] = begins.isoformat()
+    row["ends_at"] = (begins + length).isoformat()
+    proposal.proposed_blocks = edited
+    verify_candidate(db, uid, proposal, now)
+    db.add(PlanningDecisionLog(
+        owner_uid=uid, proposal_id=proposal.id, action="edited",
+        reason_codes=["USER_MOVED_SESSION", "CONSTRAINT_REVALIDATED"],
+        before_blocks=original, after_blocks=edited,
+    ))
+    db.commit()
+    db.refresh(proposal)
+    return present(proposal)
 
 
 @router.post("/{plan_id}/approve")
