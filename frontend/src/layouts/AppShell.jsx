@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer } from 'lucide-react'
+import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { ClockWidget } from '../components/ClockWidget'
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
   { path: '/focus-v2', label: 'Focus Studio', icon: Timer },
   { path: '/notifications-v2', label: 'Notifications V2', icon: Bell },
+  { path: '/recurrence-v2', label: 'Recurring Tasks', icon: Repeat2 },
   { path: '/goals',     label: 'Goals',     icon: Target },
   { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
   { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
