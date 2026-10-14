@@ -91,3 +91,44 @@ def test_rejected_proposal_cannot_be_applied():
     finally:
         Base.metadata.drop_all(engine)
         engine.dispose()
+
+
+
+def test_user_can_move_pending_session_with_validation_and_audit():
+    from datetime import datetime, timedelta
+    from v2.models import PlanningDecisionLog
+    engine, client, principal = make_test_app()
+    try:
+        result = client.post("/api/v2/plans", json={"days": 7})
+        assert result.status_code == 201, result.text
+        proposal = result.json()
+        first = proposal["blocks"][0]
+        new_start = datetime.fromisoformat(first["starts_at"]) + timedelta(days=1)
+        path = "/api/v2/plans/" + proposal["id"] + "/blocks"
+        principal["uid"] = "bob"
+        assert client.put(path, json={
+            "block_index": 0, "starts_at": new_start.isoformat()
+        }).status_code == 404
+        principal["uid"] = "alice"
+        bad = client.put(path, json={
+            "block_index": 0, "starts_at": "2026-01-01T09:00:00+00:00"
+        })
+        assert bad.status_code in (409, 422)
+        changed = client.put(path, json={
+            "block_index": 0, "starts_at": new_start.isoformat()
+        })
+        assert changed.status_code == 200, changed.text
+        assert changed.json()["blocks"][0]["starts_at"] == new_start.isoformat()
+        assert changed.json()["status"] == "pending"
+        with Session(engine) as db:
+            assert db.query(ScheduleBlock).count() == 0
+            actions = [row.action for row in db.query(PlanningDecisionLog).all()]
+            assert "edited" in actions
+        saved = client.post("/api/v2/plans/" + proposal["id"] + "/approve")
+        assert saved.status_code == 200, saved.text
+        assert client.put(path, json={
+            "block_index": 0, "starts_at": new_start.isoformat()
+        }).status_code == 409
+    finally:
+        Base.metadata.drop_all(engine)
+        engine.dispose()
