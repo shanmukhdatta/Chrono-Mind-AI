@@ -8,6 +8,7 @@ const Landing   = lazy(() => import('../pages/Landing'))
 const Dashboard = lazy(() => import('../pages/Dashboard'))
 const Calendar  = lazy(() => import('../pages/Calendar'))
 const Assistant = lazy(() => import('../pages/Assistant'))
+const FocusV2 = lazy(() => import('../pages/FocusV2'))
 const DashboardV2 = lazy(() => import('../pages/DashboardV2'))
 const TasksV2 = lazy(() => import('../pages/TasksV2'))
 const AssistantV2 = lazy(() => import('../pages/AssistantV2'))
@@ -79,6 +80,10 @@ export default function AppRouter() {
         <Route
           path="/planning"
           element={<ProtectedRoute><AppShell><PlanPreview /></AppShell></ProtectedRoute>}
+        />
+        <Route
+          path="/focus-v2"
+          element={<ProtectedRoute><AppShell><FocusV2 /></AppShell></ProtectedRoute>}
         />
         <Route
           path="/dashboard-v2"
