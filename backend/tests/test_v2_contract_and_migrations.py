@@ -44,7 +44,7 @@ def test_migration_history_is_linear_and_matches_schema():
     stems = [
         "0001_initial", "0002_proposals", "0003_legacy_archive",
         "0004_recurrence", "0005_focus", "0006_notifications",
-        "0007_dependencies", "0008_release_hardening", "0009_task_splitting", "0010_planning_decisions",
+        "0007_dependencies", "0008_release_hardening", "0009_task_splitting", "0010_planning_decisions", "0011_assistant_metrics",
     ]
     previous = None
     for stem in stems:
@@ -63,6 +63,6 @@ def test_migration_history_is_linear_and_matches_schema():
         "v2_legacy_task_archive", "v2_recurrence_series",
         "v2_recurrence_occurrences", "v2_recurrence_skips",
         "v2_focus_sessions", "v2_behavior_consent", "v2_behavior_events",
-        "v2_inapp_notifications", "v2_task_dependencies", "v2_planning_decision_logs",
+        "v2_inapp_notifications", "v2_task_dependencies", "v2_planning_decision_logs", "v2_assistant_metrics",
     }
     assert required.issubset(Base.metadata.tables)

@@ -3,7 +3,7 @@ from datetime import datetime, date, time, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
-    CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, JSON,
+    CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON,
     String, Text, Time, UniqueConstraint, func
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -257,3 +257,19 @@ class PlanningDecisionLog(Base):
     after_blocks: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     __table_args__ = (Index("ix_v2_decision_owner_date", "owner_uid", "recorded_at"),)
+
+
+class AssistantMetric(Base):
+    """Token/latency metadata only. Never store raw prompts or assistant replies."""
+    __tablename__ = "v2_assistant_metrics"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    tier: Mapped[str] = mapped_column(String(24), nullable=False)
+    mode: Mapped[str] = mapped_column(String(24), nullable=False)
+    model_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    estimated_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (Index("ix_v2_llm_metrics_owner_date", "owner_uid", "recorded_at"),)

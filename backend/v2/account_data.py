@@ -14,7 +14,7 @@ from middleware.auth import get_current_user
 from .db import get_session
 from .models import (
     BehaviorConsent, BehaviorEvent, FixedEvent, FocusSession,
-    Goal, InAppNotification, LegacyTaskArchive, PlanProposal, PlanningDecisionLog, Preference,
+    AssistantMetric, Goal, InAppNotification, LegacyTaskArchive, PlanProposal, PlanningDecisionLog, Preference,
     RecurrenceOccurrence, RecurrenceSeries, RecurrenceSkip, ScheduleBlock, Task, TaskDependency, User,
 )
 
@@ -24,7 +24,7 @@ _EXPORT_TABLES = (
     ("users", User), ("goals", Goal), ("tasks", Task),
     ("schedule_blocks", ScheduleBlock), ("task_dependencies", TaskDependency), ("fixed_events", FixedEvent),
     ("preferences", Preference), ("planning_proposals", PlanProposal),
-    ("planning_decisions", PlanningDecisionLog),
+    ("planning_decisions", PlanningDecisionLog), ("assistant_metrics", AssistantMetric),
     ("recurrence_series", RecurrenceSeries),
     ("recurrence_occurrences", RecurrenceOccurrence), ("recurrence_skips", RecurrenceSkip),
     ("focus_sessions", FocusSession), ("behavior_consent", BehaviorConsent),
