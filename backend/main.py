@@ -17,6 +17,7 @@ from v2.planning_api import router as planning_preview_router
 from v2.calendar_api import router as v2_calendar_router
 from v2.proposals_api import router as proposals_router
 from v2.agent_api import router as agent_router
+from v2.assistant import router as assistant_v2_router
 from middleware.auth import get_current_user, get_admin_user
 
 limiter = Limiter(key_func=get_remote_address)
@@ -52,6 +53,7 @@ app.include_router(planning_preview_router)
 app.include_router(v2_calendar_router)
 app.include_router(proposals_router)
 app.include_router(agent_router)
+app.include_router(assistant_v2_router)
 
 @app.get("/health")
 async def health_check():
