@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CalendarDays, Clock3, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
@@ -12,6 +13,7 @@ function describeError(error) {
 
 export default function PlanPreview() {
   const demo = useAuthStore(s => s.user?.uid === 'demo')
+  const navigate = useNavigate()
   const [days, setDays] = useState(7)
   const [preview, setPreview] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -24,6 +26,19 @@ export default function PlanPreview() {
     try {
       const response = await api.get('/api/v2/planning/preview', { params: { days } })
       setPreview(response.data)
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestApproval = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const response = await api.post('/api/v2/plans', { days })
+      navigate('/approvals?planId=' + encodeURIComponent(response.data.id))
     } catch (err) {
       setError(describeError(err))
     } finally {
@@ -50,7 +65,7 @@ export default function PlanPreview() {
         <div>
           <p className="text-amber-900 font-semibold text-sm">Read-only preview</p>
           <p className="text-amber-900/90 text-sm mt-1">
-            Suggested sessions are not saved to your calendar. Approval and execution will be enabled in the next development phase.
+            Previews do not change your calendar. You may create a durable proposal, review it, and explicitly approve it.
           </p>
         </div>
       </div>
@@ -124,6 +139,11 @@ export default function PlanPreview() {
                 </div>
               ))}
             </section>
+          )}
+          {preview.blocks.length > 0 && (
+            <button type="button" disabled={busy} onClick={requestApproval} className="btn-primary">
+              {busy ? 'Creating approval request...' : 'Review and approve this plan'}
+            </button>
           )}
           <p className="text-xs text-dark-muted">
             Generated at {formatPlanInstant(preview.generated_at, preview.timezone)}. All suggestions are provisional and may become stale when tasks change.
