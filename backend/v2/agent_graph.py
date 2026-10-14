@@ -17,6 +17,8 @@ class AgentState(TypedDict, total=False):
     proposal_id: str
     decision: str
     status: str
+    attempt: int
+    validation_error: str
 
 
 def validate_preview(preview: dict) -> None:
@@ -51,15 +53,33 @@ def build_planner_graph(
             raise ValueError("A verified owner and unique run id are required")
         if not 1 <= int(state.get("days", 0)) <= 14:
             raise ValueError("Planning horizon must be 1..14 days")
-        return {"status": "planning"}
+        return {"status": "planning", "attempt": 0, "validation_error": ""}
 
     def generate(state: AgentState) -> AgentState:
-        preview = load_preview(state["owner_uid"], state["days"])
+        # At most three deterministic attempts, broadening the horizon by two days.
+        horizon = min(14, state["days"] + state.get("attempt", 0) * 2)
+        preview = load_preview(state["owner_uid"], horizon)
         return {"preview": preview, "status": "validating"}
 
     def validate(state: AgentState) -> AgentState:
-        validate_preview(state["preview"])
-        return {"status": "awaiting_persistence"}
+        try:
+            validate_preview(state["preview"])
+            return {"validation_error": "", "status": "awaiting_persistence"}
+        except ValueError as exc:
+            return {"validation_error": str(exc), "status": "replanning"}
+
+    def route_validation(state: AgentState) -> str:
+        if not state.get("validation_error"):
+            return "valid"
+        if state.get("attempt", 0) < 2:
+            return "retry"
+        return "exhausted"
+
+    def retry(state: AgentState) -> AgentState:
+        return {"attempt": state.get("attempt", 0) + 1}
+
+    def no_plan(state: AgentState) -> AgentState:
+        return {"status": "no_feasible_plan"}
 
     def store(state: AgentState) -> AgentState:
         proposal_id = persist_proposal(state["owner_uid"], state["run_id"], state["preview"])
@@ -83,13 +103,19 @@ def build_planner_graph(
     graph.add_node("intake", intake)
     graph.add_node("generate", generate)
     graph.add_node("validate", validate)
+    graph.add_node("retry", retry)
+    graph.add_node("no_plan", no_plan)
     graph.add_node("store", store)
     graph.add_node("await_human", await_human)
     graph.add_node("complete", complete)
     graph.set_entry_point("intake")
     graph.add_edge("intake", "generate")
     graph.add_edge("generate", "validate")
-    graph.add_edge("validate", "store")
+    graph.add_conditional_edges("validate", route_validation, {
+        "valid": "store", "retry": "retry", "exhausted": "no_plan",
+    })
+    graph.add_edge("retry", "generate")
+    graph.add_edge("no_plan", END)
     graph.add_edge("store", "await_human")
     graph.add_edge("await_human", "complete")
     graph.add_edge("complete", END)

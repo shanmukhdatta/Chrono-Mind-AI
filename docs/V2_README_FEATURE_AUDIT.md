@@ -15,11 +15,11 @@
 | Dynamic priority scoring | Importance, deadline, active goal and explanations | Partial: no postponement count, context switching, flexibility or full behavior feedback |
 | Deterministic scheduling | Fixed events, time windows, daily caps, basic 90min splitting, preferences | Implemented heuristic; not a full optimization/constraint-quality pipeline |
 | Missed-task recovery | Past unfinished sessions can generate fresh suggestions | Manual preview; no event-triggered V2 automatic replanning |
-| Bounded replanning | Proposed in README, not executed by V2 graph | **Missing** |
+| Bounded replanning | At most three validation/extended-horizon tries inside LangGraph | Partial: no general repair strategies or plan-quality optimization |
 | Semantic task decomposition | Time-block splitting only | **Missing** |
 | Approval, rejection, undo | Transactional PostgreSQL proposals and review UI | Code + isolated tests; real concurrency verification pending |
 | User modification of proposed plan | Reject/regenerate or modify original task; no proposal-edit action | **Missing** |
-| Durable LangGraph | Six nodes, explicit Postgres checkpointer, human interrupt and Agent Runs page | Partial: external database restart not verified; no bounded replan |
+| Durable LangGraph | Checkpointed planner, bounded horizon retries, human interrupt and Agent Runs page | Partial: external database restart not verified; no full graph quality optimization |
 | Structured assistant | Validated task/goal drafts and explicit confirmation | Partial: query/update/complete/remove/full toolset missing |
 | Adaptive LLM routing | Basic no-LLM query shortcut, allowlisted fast/reasoning selector and token/latency logs | Partial: heuristic routing only, no full cost dashboard or multi-provider fallback |
 | Voice | Browser STT and languages where browser supports | Implemented option; real browser/device acceptance pending |

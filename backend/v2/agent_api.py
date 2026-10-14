@@ -103,7 +103,8 @@ def begin_run(body: StartPlanningRequest, user: dict = Depends(get_current_user)
     return {
         "run_id": run_id, "proposal_id": snapshot.values.get("proposal_id"),
         "status": "awaiting_review" if snapshot.next else snapshot.values.get("status"),
-        "requires_human_approval": True,
+        "requires_human_approval": bool(snapshot.next),
+        "reason": snapshot.values.get("validation_error") or None,
     }
 
 
