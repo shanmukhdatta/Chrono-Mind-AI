@@ -32,7 +32,7 @@ def test_alembic_schema_and_approval_undo_persist_full_plan_source():
     dbengine = engine()
     with dbengine.connect() as connection:
         head = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert head == "0011_assistant_metrics"
+        assert head == "0013_focus_context"
     columns = inspect(dbengine).get_columns("v2_schedule_blocks")
     source = next(column for column in columns if column["name"] == "source")
     assert source["type"].length >= 41, "plan UUID source must fit Postgres VARCHAR"

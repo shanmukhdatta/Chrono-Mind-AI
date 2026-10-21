@@ -45,6 +45,7 @@ class Task(Base):
     legacy_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    context_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     splittable: Mapped[bool] = mapped_column(default=True, nullable=False)
     importance: Mapped[str] = mapped_column(String(24), default="important", nullable=False)
@@ -99,6 +100,7 @@ class Preference(Base):
     work_end: Mapped[time] = mapped_column(Time, default=lambda: time(22, 0), nullable=False)
     max_daily_minutes: Mapped[int] = mapped_column(Integer, default=480, nullable=False)
     min_break_minutes: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
+    focus_context: Mapped[str | None] = mapped_column(String(64), nullable=True)
     __table_args__ = (
         CheckConstraint("work_end > work_start", name="preference_work_window"),
         CheckConstraint("max_daily_minutes BETWEEN 60 AND 960", name="preference_daily_limit"),

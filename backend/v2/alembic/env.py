@@ -2,7 +2,7 @@
 import os
 from logging.config import fileConfig
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, engine_from_config, pool
 from v2.models import Base
 
 config = context.config
@@ -29,9 +29,7 @@ def offline():
 
 
 def online():
-    section = config.get_section(config.config_ini_section) or {}
-    section["sqlalchemy.url"] = database_url().replace("%", "%%")
-    connectable = engine_from_config(section, prefix="sqlalchemy.", poolclass=pool.NullPool)
+    connectable = create_engine(database_url(), poolclass=pool.NullPool)
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():

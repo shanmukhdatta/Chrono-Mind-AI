@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore'
 
 const defaults = {
   timezone: 'Asia/Kolkata', work_start: '08:00', work_end: '22:00',
-  max_daily_minutes: 480, min_break_minutes: 10,
+  max_daily_minutes: 480, min_break_minutes: 10, focus_context: '',
 }
 
 function errorText(error) {
@@ -36,6 +36,7 @@ export default function PlanningSettings() {
         work_end: data.work_end.slice(0, 5),
         max_daily_minutes: data.max_daily_minutes,
         min_break_minutes: data.min_break_minutes,
+        focus_context: data.focus_context || '',
       })
       setError('')
     } catch (err) {
@@ -58,7 +59,7 @@ export default function PlanningSettings() {
       const data = response.data
       setForm({
         ...data, work_start: data.work_start.slice(0, 5),
-        work_end: data.work_end.slice(0, 5),
+        work_end: data.work_end.slice(0, 5), focus_context: data.focus_context || '',
       })
       setError('')
       toast.success('Planning preferences saved')
@@ -132,8 +133,22 @@ export default function PlanningSettings() {
                 onChange={e => change('min_break_minutes', e.target.value)} />
             </label>
           </div>
+          <label className="block text-sm font-medium">Current focus context (optional)
+            <input className="input-field mt-1" maxLength={64} list="focus-contexts"
+              placeholder="e.g. Placement Season"
+              value={form.focus_context || ''}
+              onChange={e => change('focus_context', e.target.value)} />
+            <datalist id="focus-contexts">
+              <option value="Placement Season" />
+              <option value="Exam Week" />
+              <option value="Project Deadline" />
+            </datalist>
+            <span className="block text-xs text-dark-muted mt-1">
+              Tasks tagged with matching context words receive a documented priority boost. Leave blank for no context boost.
+            </span>
+          </label>
           <p className="text-sm text-dark-muted">
-            These limits are persisted in PostgreSQL. The scheduling engine will enforce them when its planning phase is implemented.
+            These limits are persisted in PostgreSQL. The scheduler enforces them during every planning preview and proposal approval.
           </p>
           <button type="submit" className="btn-primary flex gap-2 items-center" disabled={saving}>
             <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save preferences'}

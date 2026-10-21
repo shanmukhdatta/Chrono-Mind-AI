@@ -6,11 +6,11 @@ import {
 import toast from 'react-hot-toast'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
-import { isoToDateTimeLocal, taskPayload } from '../lib/tasksV2'
+import { isoToDateTimeLocal, taskPayload, contextTagsToInput } from '../lib/tasksV2'
 
 const empty = () => ({
   title: '', description: '', importance: 'important', duration_minutes: 30,
-  deadline_at: '', goal_id: '', splittable: true,
+  deadline_at: '', goal_id: '', splittable: true, context_tags: '',
 })
 
 function message(err) {
@@ -76,6 +76,7 @@ export default function TasksV2() {
       importance: item.importance,
       deadline_at: isoToDateTimeLocal(item.deadline_at),
       goal_id: item.goal_id || '',
+      context_tags: contextTagsToInput(item.context_tags),
     })
     setEditor(true)
   }
@@ -293,6 +294,14 @@ export default function TasksV2() {
                   </select>
                 </label>
               </div>
+              <label className="block text-sm font-medium">Context tags (comma separated, optional)
+                <input className="input-field mt-1" maxLength={250}
+                  placeholder="e.g. Placement Prep, Interview"
+                  value={form.context_tags} onChange={e => updateField('context_tags', e.target.value)} />
+                <span className="block text-xs text-dark-muted mt-1">
+                  Matching your focus context in Planning preferences raises this task's documented priority score.
+                </span>
+              </label>
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" checked={Boolean(form.splittable)}
                   onChange={e => updateField('splittable', e.target.checked)} />
@@ -350,6 +359,9 @@ export default function TasksV2() {
                           <span className="text-blue-700 font-medium">Due {new Date(task.deadline_at).toLocaleString()}</span>
                         )}
                         {task.goal_id && <span className="text-purple-700 font-medium">Goal: {goalName(task.goal_id) || 'Active'}</span>}
+                        {(task.context_tags || []).map(tag => (
+                          <span key={tag} className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11px] font-medium">#{tag}</span>
+                        ))}
                       </p>
                     </div>
 

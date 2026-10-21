@@ -1,12 +1,12 @@
 """Add parent_task_id to v2_tasks and expand recurrence frequency to support monthly.
 
-Revision ID: 0012_subtasks_and_monthly_recurrence
+Revision ID: 0012_subtasks_monthly
 Revises: 0011_assistant_metrics
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0012_subtasks_and_monthly_recurrence"
+revision = "0012_subtasks_monthly"
 down_revision = "0011_assistant_metrics"
 branch_labels = None
 depends_on = None
@@ -24,4 +24,9 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Schema revisions cannot be automatically dropped in production")
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.drop_constraint("recurrence_frequency", "v2_recurrence_series", type_="check")
+        op.create_check_constraint("recurrence_frequency", "v2_recurrence_series", "frequency IN ('daily', 'weekly')")
+    op.drop_index("ix_v2_tasks_owner_parent", table_name="v2_tasks")
+    op.drop_column("v2_tasks", "parent_task_id")

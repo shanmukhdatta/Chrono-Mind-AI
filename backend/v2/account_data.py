@@ -132,10 +132,31 @@ def delete_user_account_data(
         pass
 
     db.commit()
+
+    # LangGraph checkpoint rows are keyed by thread_id "<uid>:<run_id>"; purge them
+    # when PostgreSQL checkpoints are configured so no agent state survives deletion.
+    checkpoints_cleaned = False
+    try:
+        from sqlalchemy import text
+        from v2.db import engine
+        prefix = uid.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ":%"
+        with engine().begin() as connection:
+            for table in ("checkpoints", "checkpoint_blobs", "checkpoint_writes"):
+                connection.execute(
+                    text(f"DELETE FROM {table} WHERE thread_id LIKE :prefix ESCAPE '\\'"),
+                    {"prefix": prefix},
+                )
+        checkpoints_cleaned = True
+    except Exception:
+        # Checkpoint tables are operator-initialized; missing tables or an
+        # unconfigured database must not undo the completed PostgreSQL purge.
+        checkpoints_cleaned = False
+
     return {
         "deleted": True,
         "uid": uid,
         "records_purged": deleted_counts,
         "firestore_cleaned": firestore_cleaned,
+        "checkpoints_cleaned": checkpoints_cleaned,
     }
 

@@ -99,7 +99,7 @@ def patch_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_current_
     # All V2 calendar/task writes acquire the same owner-row lock first.
     db.scalar(select(User).where(User.uid == uid).with_for_update())
     changes = body.model_dump(exclude_unset=True, exclude={"version"})
-    for key in ("title", "description", "duration_minutes", "splittable", "importance", "status"):
+    for key in ("title", "description", "context_tags", "duration_minutes", "splittable", "importance", "status"):
         if key in changes and changes[key] is None:
             raise HTTPException(422, key + " cannot be null")
     if "title" in changes and not changes["title"].strip():

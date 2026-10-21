@@ -49,7 +49,7 @@ def test_migration_history_is_linear_and_matches_schema():
         "0001_initial", "0002_proposals", "0003_legacy_archive",
         "0004_recurrence", "0005_focus", "0006_notifications",
         "0007_dependencies", "0008_release_hardening", "0009_task_splitting", "0010_planning_decisions", "0011_assistant_metrics",
-        "0012_subtasks_and_monthly_recurrence",
+        "0012_subtasks_monthly", "0013_focus_context",
     ]
     previous = None
     for stem in stems:

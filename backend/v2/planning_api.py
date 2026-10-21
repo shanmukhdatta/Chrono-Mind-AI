@@ -13,7 +13,7 @@ from .models import (
     BehaviorConsent, BehaviorEvent, FixedEvent, Goal, InAppNotification,
     PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, TaskDependency, User
 )
-from .priority import score_task
+from .priority import context_matches, score_task
 from .personalization import preferred_work_hour
 from .planner import BusyInterval, PlanningPreferences, PlanningTask
 from .replanning import choose_schedule
@@ -72,6 +72,7 @@ def get_preview(
 
     generated = datetime.now(timezone.utc)
     scheduled = defaultdict(int)
+    postponed = defaultdict(int)
     occupied = []
     for block in blocks:
         start = _aware(block.starts_at)
@@ -79,6 +80,9 @@ def get_preview(
         # Missed sessions are not completed work; allow new proposals for unfinished tasks.
         if end > generated:
             scheduled[block.task_id] += int((end - max(start, generated)).total_seconds() // 60)
+        else:
+            # A past session for still-pending work is one recorded postponement.
+            postponed[block.task_id] += 1
         occupied.append(BusyInterval(start, end, counts_as_work=True))
     for event in events:
         occupied.append(BusyInterval(_aware(event.starts_at), _aware(event.ends_at)))
@@ -99,9 +103,12 @@ def get_preview(
             score_task(
                 row.importance, _aware(row.deadline_at),
                 row.goal_id in active_goal_ids, generated,
+                postponements=postponed[row.id],
                 dependent_count=dependent_counts[row.id],
                 is_blocked=bool(blockers[row.id]),
                 duration_minutes=row.duration_minutes,
+                context_match=context_matches(pref.focus_context if pref else None, row.context_tags),
+                splittable=row.splittable,
             ).score,
             row.splittable,
         )
@@ -147,31 +154,38 @@ class ReplanTriggerRequest(BaseModel):
     notify: bool = True
 
 
-@router.post("/replan")
-def trigger_adaptive_replan(
-    body: ReplanTriggerRequest,
-    user: dict = Depends(get_current_user),
-    db: Session = Depends(get_session),
-):
-    uid = user["uid"]
+def create_replan_proposal(
+    db: Session,
+    uid: str,
+    days: int,
+    trigger: str,
+    create_proposal: bool = True,
+    notify: bool = True,
+) -> dict:
+    """Build an adaptive replan proposal for one owner.
+
+    Shared by the authenticated endpoint and the operator background worker so
+    both paths apply identical validation, locking, and decision logging.
+    """
     get_or_create_user(db, uid)
     db.scalar(select(User).where(User.uid == uid).with_for_update())
 
-    preview = get_preview(days=body.days, user=user, db=db)
+    user = {"uid": uid}
+    preview = get_preview(days=days, user=user, db=db)
     if not preview["blocks"]:
         return {
             "proposal_id": None,
             "preview": preview,
-            "trigger": body.trigger,
+            "trigger": trigger,
             "message": "No unblocked tasks fit this planning horizon. Keep current schedule.",
             "notification_sent": False,
         }
 
-    if not body.create_proposal:
+    if not create_proposal:
         return {
             "proposal_id": None,
             "preview": preview,
-            "trigger": body.trigger,
+            "trigger": trigger,
             "message": "Preview generated without creating a proposal.",
             "notification_sent": False,
         }
@@ -194,23 +208,18 @@ def trigger_adaptive_replan(
     db.flush()
 
     db.add(PlanningDecisionLog(
-        owner_uid=uid,
-        proposal_id=plan.id,
-        action="replanned",
-        reason_codes=["ADAPTIVE_REPLAN", f"TRIGGER_{body.trigger.upper()}", "USER_REVIEW_REQUIRED"],
-        before_blocks=[],
-        after_blocks=preview["blocks"],
+        owner_uid=uid, proposal_id=plan.id, action="replanned",
+        reason_codes=["ADAPTIVE_REPLAN", f"TRIGGER_{trigger.upper()}", "USER_REVIEW_REQUIRED"],
+        before_blocks=[], after_blocks=preview["blocks"],
     ))
 
     notification_sent = False
-    if body.notify:
+    if notify:
         now_utc = datetime.now(timezone.utc)
         key = f"replan:{plan.id}:{int(now_utc.timestamp())}"
-        clean_trigger = body.trigger.replace("_", " ")
+        clean_trigger = trigger.replace("_", " ")
         db.add(InAppNotification(
-            owner_uid=uid,
-            kind="replan_available",
-            dedupe_key=key,
+            owner_uid=uid, kind="replan_available", dedupe_key=key,
             message=f"Adaptive replan ready: {len(preview['blocks'])} sessions proposed ({clean_trigger}).",
             created_at=now_utc,
         ))
@@ -222,8 +231,20 @@ def trigger_adaptive_replan(
     return {
         "proposal_id": plan.id,
         "preview": preview,
-        "trigger": body.trigger,
+        "trigger": trigger,
         "message": f"Adaptive plan generated ({len(preview['blocks'])} sessions proposed). Review and approve in Approvals.",
         "notification_sent": notification_sent,
     }
+
+
+@router.post("/replan")
+def trigger_adaptive_replan(
+    body: ReplanTriggerRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    return create_replan_proposal(
+        db, user["uid"], body.days, body.trigger,
+        create_proposal=body.create_proposal, notify=body.notify,
+    )
 

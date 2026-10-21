@@ -62,7 +62,11 @@ api.interceptors.response.use(
       } else if (method === 'delete') {
         return Promise.resolve({ data: { success: true } })
       }
-      return Promise.resolve({ data: { success: true, data: {} } })
+      // Never fabricate success for unknown endpoints (including every V2
+      // PostgreSQL route): demo mode only simulates the legacy V1 task list.
+      return Promise.reject(Object.assign(new Error(
+        'Demo mode cannot perform this action. Sign in to save real data.'
+      ), { config: originalRequest, response: error.response }))
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
