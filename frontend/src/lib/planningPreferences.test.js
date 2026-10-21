@@ -7,8 +7,15 @@ describe('planning preferences', () => {
   it('normalizes time and numeric fields', () => {
     expect(normalizePlanningPreferences(valid)).toEqual({
       timezone: 'Asia/Kolkata', work_start: '08:00', work_end: '22:00',
-      max_daily_minutes: 480, min_break_minutes: 10,
+      max_daily_minutes: 480, min_break_minutes: 10, focus_context: null,
     })
+  })
+  it('normalizes an optional focus context and trims it', () => {
+    expect(normalizePlanningPreferences({ ...valid, focus_context: '  Placement Season  ' }).focus_context)
+      .toBe('Placement Season')
+  })
+  it('rejects an oversized focus context', () => {
+    expect(() => normalizePlanningPreferences({ ...valid, focus_context: 'x'.repeat(65) })).toThrow(/Focus context/)
   })
   it('rejects impossible work windows', () => {
     expect(() => normalizePlanningPreferences({ ...valid, work_start: '23:00' })).toThrow(/work window/)

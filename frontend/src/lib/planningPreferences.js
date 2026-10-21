@@ -15,11 +15,16 @@ export function normalizePlanningPreferences(form) {
   if (!form.timezone || form.timezone.length > 64) {
     throw new Error('Enter an IANA timezone.')
   }
+  const focusContext = String(form.focus_context || '').trim()
+  if (focusContext.length > 64) {
+    throw new Error('Focus context must be 64 characters or fewer.')
+  }
   return {
     timezone: form.timezone.trim(),
     work_start: start,
     work_end: end,
     max_daily_minutes: minutes,
     min_break_minutes: breakMinutes,
+    focus_context: focusContext || null,
   }
 }

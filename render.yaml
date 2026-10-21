@@ -26,3 +26,52 @@ services:
         value: llama-3.1-8b-instant
       - key: CHRONOMIND_LLM_REASONING_MODEL
         value: llama-3.3-70b-versatile
+
+  # Managed cron jobs: recurring V2 work never depends on the web process staying awake.
+  # Each job is dry-run-safe until its CHRONOMIND_*_JOB_ENABLED flag is explicitly set.
+  - type: cron
+    name: chronomind-v2-notifications
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m scripts.generate_v2_notifications --all-users --apply
+    schedule: "0 6 * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: CHRONOMIND_NOTIFICATIONS_JOB_ENABLED
+        value: "1"
+
+  - type: cron
+    name: chronomind-v2-recurrence
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m scripts.expand_v2_recurrence --all-users --apply --days 14
+    schedule: "0 * * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: CHRONOMIND_RECURRENCE_JOB_ENABLED
+        value: "1"
+
+  - type: cron
+    name: chronomind-v2-replans
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m scripts.propose_v2_replans --all-users --apply --days 7
+    schedule: "0 5 * * *"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: CHRONOMIND_REPLAN_JOB_ENABLED
+        value: "1"
+      - key: LANGGRAPH_STRICT_MSGPACK
+        value: "true"

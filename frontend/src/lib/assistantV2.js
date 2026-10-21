@@ -25,6 +25,29 @@ export function extractDraft(decision) {
     }
     return { kind: 'task_change', payload }
   }
+  if (decision?.kind === 'draft_goal_change' && decision.draft_goal_change) {
+    const item = decision.draft_goal_change
+    const valid = ['update', 'complete', 'pause', 'archive', 'delete']
+    if (!valid.includes(item.operation)) return null
+    const payload = { goal_id: item.goal_id, operation: item.operation }
+    if (item.operation === 'update') {
+      if (item.title != null) payload.title = item.title
+      if (item.description != null) payload.description = item.description
+    }
+    return { kind: 'goal_change', payload }
+  }
+  if (decision?.kind === 'draft_decomposition' && decision.draft_decomposition) {
+    const item = decision.draft_decomposition
+    if (!item.task_id) return null
+    return {
+      kind: 'decomposition',
+      payload: {
+        task_id: item.task_id,
+        task_title: item.task_title || '',
+        subtasks: Array.isArray(item.subtasks) ? item.subtasks : []
+      }
+    }
+  }
   return null
 }
 

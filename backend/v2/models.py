@@ -41,9 +41,11 @@ class Task(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
     goal_id: Mapped[str | None] = mapped_column(ForeignKey("v2_goals.id", ondelete="SET NULL"), nullable=True)
+    parent_task_id: Mapped[str | None] = mapped_column(ForeignKey("v2_tasks.id", ondelete="CASCADE"), nullable=True)
     legacy_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    context_tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     splittable: Mapped[bool] = mapped_column(default=True, nullable=False)
     importance: Mapped[str] = mapped_column(String(24), default="important", nullable=False)
@@ -59,6 +61,7 @@ class Task(Base):
         CheckConstraint("status IN ('pending','completed','archived')", name="task_status"),
         CheckConstraint("importance IN ('important','not_important')", name="task_importance"),
         Index("ix_v2_tasks_owner_status_deadline", "owner_uid", "status", "deadline_at"),
+        Index("ix_v2_tasks_owner_parent", "owner_uid", "parent_task_id"),
     )
 
 
@@ -97,6 +100,7 @@ class Preference(Base):
     work_end: Mapped[time] = mapped_column(Time, default=lambda: time(22, 0), nullable=False)
     max_daily_minutes: Mapped[int] = mapped_column(Integer, default=480, nullable=False)
     min_break_minutes: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
+    focus_context: Mapped[str | None] = mapped_column(String(64), nullable=True)
     __table_args__ = (
         CheckConstraint("work_end > work_start", name="preference_work_window"),
         CheckConstraint("max_daily_minutes BETWEEN 60 AND 960", name="preference_daily_limit"),
@@ -151,7 +155,7 @@ class RecurrenceSeries(Base):
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     __table_args__ = (
-        CheckConstraint("frequency IN ('daily','weekly')", name="recurrence_frequency"),
+        CheckConstraint("frequency IN ('daily','weekly','monthly')", name="recurrence_frequency"),
         CheckConstraint("duration_minutes BETWEEN 1 AND 1440", name="recurrence_duration"),
         CheckConstraint("importance IN ('important','not_important')", name="recurrence_importance"),
     )

@@ -47,4 +47,35 @@ describe('confirmable changes to existing tasks', () => {
       title:'New title', duration_minutes:50,
     })
   })
+
+  it('maps an allowlisted goal change', () => {
+    const draft = extractDraft({
+      kind: 'draft_goal_change',
+      draft_goal_change: { goal_id: 'g-1', operation: 'pause' },
+    })
+    expect(draft).toEqual({
+      kind: 'goal_change',
+      payload: { goal_id: 'g-1', operation: 'pause' },
+    })
+  })
+
+  it('maps a decomposition draft', () => {
+    const draft = extractDraft({
+      kind: 'draft_decomposition',
+      draft_decomposition: {
+        task_id: 't-1',
+        task_title: 'Big Task',
+        subtasks: [{ title: 'Subtask 1', duration_minutes: 30 }],
+      },
+    })
+    expect(draft).toEqual({
+      kind: 'decomposition',
+      payload: {
+        task_id: 't-1',
+        task_title: 'Big Task',
+        subtasks: [{ title: 'Subtask 1', duration_minutes: 30 }],
+      },
+    })
+  })
 })
+

@@ -70,3 +70,93 @@ def export_postgres_data(
         ],
         "data": export,
     }
+
+
+@router.delete("", status_code=200)
+def delete_user_account_data(
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_session),
+):
+    """Safely and permanently purge all V2 PostgreSQL records and legacy collections for this user."""
+    from sqlalchemy import delete
+    uid = user["uid"]
+
+    # Lock user row if present
+    db.scalar(select(User).where(User.uid == uid).with_for_update())
+
+    # Reverse dependency deletion order
+    deletion_order = (
+        InAppNotification,
+        BehaviorEvent,
+        BehaviorConsent,
+        FocusSession,
+        RecurrenceSkip,
+        RecurrenceOccurrence,
+        RecurrenceSeries,
+        PlanningDecisionLog,
+        AssistantMetric,
+        PlanProposal,
+        ScheduleBlock,
+        TaskDependency,
+        Task,
+        Goal,
+        FixedEvent,
+        Preference,
+        LegacyTaskArchive,
+        User,
+    )
+
+    deleted_counts = {}
+    for model in deletion_order:
+        column = User.uid if model is User else getattr(model, "owner_uid")
+        result = db.execute(delete(model).where(column == uid))
+        deleted_counts[model.__tablename__] = result.rowcount
+
+    # Also clean up legacy Firestore tasks and notifications if initialized
+    firestore_cleaned = False
+    try:
+        from services.firebase_service import get_db
+        fdb = get_db()
+        if fdb is not None:
+            user_ref = fdb.collection("users").document(uid)
+            for coll in ("tasks", "notifications"):
+                docs = list(user_ref.collection(coll).stream())
+                if docs:
+                    batch = fdb.batch()
+                    for d in docs:
+                        batch.delete(d.reference)
+                    batch.commit()
+            firestore_cleaned = True
+    except Exception:
+        # Firestore may not be initialized or configured in this test environment
+        pass
+
+    db.commit()
+
+    # LangGraph checkpoint rows are keyed by thread_id "<uid>:<run_id>"; purge them
+    # when PostgreSQL checkpoints are configured so no agent state survives deletion.
+    checkpoints_cleaned = False
+    try:
+        from sqlalchemy import text
+        from v2.db import engine
+        prefix = uid.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ":%"
+        with engine().begin() as connection:
+            for table in ("checkpoints", "checkpoint_blobs", "checkpoint_writes"):
+                connection.execute(
+                    text(f"DELETE FROM {table} WHERE thread_id LIKE :prefix ESCAPE '\\'"),
+                    {"prefix": prefix},
+                )
+        checkpoints_cleaned = True
+    except Exception:
+        # Checkpoint tables are operator-initialized; missing tables or an
+        # unconfigured database must not undo the completed PostgreSQL purge.
+        checkpoints_cleaned = False
+
+    return {
+        "deleted": True,
+        "uid": uid,
+        "records_purged": deleted_counts,
+        "firestore_cleaned": firestore_cleaned,
+        "checkpoints_cleaned": checkpoints_cleaned,
+    }
+
