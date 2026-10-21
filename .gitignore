@@ -33,3 +33,6 @@ serviceAccountKey.json
 # Python bytecode, including compiled files under nested package directories
 **/__pycache__/
 *.py[cod]
+
+# Freebuff local workspace metadata
+.freebuff/
