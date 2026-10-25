@@ -1,5 +1,8 @@
 # ChronoMind AI V2 — README-to-code audit
 
+> **Historical feature audit (14 October 2026).** Many gaps listed below were subsequently addressed in PR #43 or the V2 finalization PR. Do not treat this older matrix as current implementation status. Use [FEATURE_MAP.md](FEATURE_MAP.md) and [FINAL_HANDOFF.md](FINAL_HANDOFF.md) instead.
+
+
 **Audit date:** 2026-10-14. **Reviewed branch:** `v2/readme-completion-and-release-fixes`, based on merged `main`. The original V2 architecture README remains a **product specification**, not proof of completed functionality. This audit distinguishes source-code presence from live verification.
 
 ## Capability matrix

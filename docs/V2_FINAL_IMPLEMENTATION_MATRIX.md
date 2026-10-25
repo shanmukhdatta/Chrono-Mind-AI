@@ -1,5 +1,8 @@
 # ChronoMind AI V2 — Final README-to-Code Implementation Matrix
 
+> **Historical audit snapshot (22 October 2026).** The table below describes test evidence available at that time. A later [main-branch GitHub CI run](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/39682097457) successfully exercised disposable PostgreSQL migrations and LangGraph checkpoints; the earlier "skipped locally" note is not a claim that CI never ran them. For current changes and unresolved acceptance requirements, see [FINAL_HANDOFF.md](FINAL_HANDOFF.md) and [FEATURE_MAP.md](FEATURE_MAP.md).
+
+
 **Audit date:** 2026-10-22. **Branch:** `feat/chronomind-v2-complete-prototype` (from `v2/complete-core-product`).
 **Evidence basis:** full local backend suite (137 passed, 2 skipped), frontend suite (36 passed), Vite production build, `python -m compileall`. Live PostgreSQL/Firebase/LLM/browser verification requires external services not available in this environment.
 
