@@ -36,3 +36,7 @@ serviceAccountKey.json
 
 # Freebuff local workspace metadata
 .freebuff/
+
+# Alternative operator-local API credentials (only *.example belongs in Git)
+**/api.env
+**/api.env.local

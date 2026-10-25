@@ -145,6 +145,7 @@ export default function AssistantV2() {
         if (![200, 204].includes(response.status)) throw new Error('Goal action was not confirmed')
       } else if (draft.kind === 'decomposition') {
         response = await api.post(`/api/v2/tasks/${encodeURIComponent(draft.payload.task_id)}/decompose`, {
+          // Apply the exact, user-confirmed draft, never silently regenerate different steps.
           subtasks: draft.payload.subtasks,
           apply: true
         })

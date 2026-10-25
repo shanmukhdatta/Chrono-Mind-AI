@@ -50,7 +50,16 @@ export default function Profile() {
   const handleV2Purge = async () => {
     try {
       setActionError('')
-      await api.delete('/api/v2/account')
+      const response = await api.delete('/api/v2/account')
+      if (response.data?.status !== 'complete') {
+        setActionError(
+          'V2 PostgreSQL records were purged, but complete account erasure was NOT confirmed. ' +
+          (response.data?.remaining_scope || []).join('; ') +
+          '. Your Firebase login remains active; contact the deployment administrator for remaining cleanup.'
+        )
+        setShowV2DeleteConfirm(false)
+        return
+      }
       await handleSignOut()
     } catch (err) {
       setActionError(err.response?.data?.detail || err.message || 'Failed to purge account data')
@@ -202,13 +211,13 @@ export default function Profile() {
 
         {actionError && <p role="alert" className="text-sm text-red-700">{actionError}</p>}
 
-        {/* Danger Zone: Full Cross-Store Deletion */}
+        {/* Danger Zone: best-effort application data purge; not Firebase account deletion */}
         <div className="rounded-xl border border-red-200 p-4 bg-red-50/50 space-y-3">
           <h4 className="text-sm font-bold text-red-900 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4 text-red-600" /> Account Privacy & Data Erasure
           </h4>
           <p className="text-xs text-red-700">
-            Permanently delete all your records across both PostgreSQL 16 (all 18 tables) and legacy Firestore collections.
+            Purge your V2 PostgreSQL data and attempt cleanup of legacy Firestore and agent checkpoints. Firebase Authentication account deletion is not included. Results may be partial.
           </p>
 
           {!showV2DeleteConfirm ? (
@@ -217,15 +226,15 @@ export default function Profile() {
               disabled={user?.uid === 'demo'}
               className="text-xs font-semibold text-red-600 hover:text-red-800 underline"
             >
-              Purge all ChronoMind account data (Cross-store: PostgreSQL & Firestore)
+              Purge V2 app data (external cleanup is best-effort)
             </button>
           ) : (
             <div className="p-3 bg-red-100/70 border border-red-300 rounded-lg space-y-2">
-              <p className="text-xs text-red-800 font-semibold">Are you absolutely sure? This will irrevocably delete all your tasks, goals, schedules, proposals, decision logs, and preferences.</p>
+              <p className="text-xs text-red-800 font-semibold">Are you sure? This irreversibly purges your V2 PostgreSQL records. External cleanup may remain incomplete; export your data first.</p>
               <div className="flex gap-2">
                 <button onClick={() => setShowV2DeleteConfirm(false)} className="px-3 py-1.5 bg-white text-xs rounded border text-dark font-medium">Cancel</button>
                 <button onClick={handleV2Purge} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded font-medium flex items-center gap-1">
-                  <Trash2 className="w-3.5 h-3.5" /> Confirm Purge All Data
+                  <Trash2 className="w-3.5 h-3.5" /> Confirm V2 Data Purge
                 </button>
               </div>
             </div>

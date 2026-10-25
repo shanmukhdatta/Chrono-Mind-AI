@@ -8,6 +8,7 @@ const V2_DEFAULT = import.meta.env.VITE_V2_DEFAULT === 'true'
 const DEFAULT_HOME = V2_DEFAULT ? '/dashboard-v2' : '/dashboard'
 
 const Landing   = lazy(() => import('../pages/Landing'))
+const DemoPreview = lazy(() => import('../pages/DemoPreview'))
 const Dashboard = lazy(() => import('../pages/Dashboard'))
 const Calendar  = lazy(() => import('../pages/Calendar'))
 const Assistant = lazy(() => import('../pages/Assistant'))
@@ -46,7 +47,7 @@ function ProtectedRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore()
   if (isLoading) return <PageLoader />
-  if (isAuthenticated) return <Navigate to={DEFAULT_HOME} replace />
+  if (isAuthenticated) return <Navigate to={useAuthStore.getState().user?.uid === 'demo' ? '/dashboard' : DEFAULT_HOME} replace />
   return children
 }
 
@@ -54,6 +55,7 @@ export default function AppRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+      <Route path="/demo" element={<DemoPreview />} />
         <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
         <Route
           path="/dashboard"

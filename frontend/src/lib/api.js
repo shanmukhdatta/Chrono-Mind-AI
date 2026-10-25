@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getAuth } from 'firebase/auth'
+import { auth } from './firebase'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -15,8 +15,7 @@ api.interceptors.request.use(async (config) => {
     return config // skip token for demo mode
   }
 
-  const auth = getAuth()
-  const user = auth.currentUser
+  const user = auth?.currentUser || null
   if (user) {
     try {
       const token = await user.getIdToken(false) // false = use cached token
@@ -71,8 +70,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      const auth = getAuth()
-      const user = auth.currentUser
+      const user = auth?.currentUser || null
       if (user) {
         try {
           const freshToken = await user.getIdToken(true) // force refresh

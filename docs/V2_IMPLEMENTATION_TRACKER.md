@@ -1,5 +1,8 @@
 # ChronoMind AI V2 — Permanent Implementation Tracker
 
+> **Archived phase-tracker snapshot.** Dates and phase states below are historical and may predate merged V2 features. The canonical resumption checklist is [FINAL_HANDOFF.md](FINAL_HANDOFF.md); current source navigation is [FEATURE_MAP.md](FEATURE_MAP.md).
+
+
 **Canonical branch for the Phase 0 work:** `v2/phase0-safety`  
 **Review PR:** [#1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1)  
 **Last updated:** 2026-10-13  

@@ -55,6 +55,12 @@ def get_preview(
         )
 
     rows = db.scalars(select(Task).where(Task.owner_uid == uid, Task.status == "pending")).all()
+    # A decomposed parent is a container, not additional work to allocate.
+    # Children carry its effort; otherwise the planner would double-book it.
+    container_ids = set(db.scalars(select(Task.parent_task_id).where(
+        Task.owner_uid == uid, Task.parent_task_id.is_not(None)
+    )).all())
+    rows = [task for task in rows if task.id not in container_ids]
     blocks = db.scalars(select(ScheduleBlock).where(ScheduleBlock.owner_uid == uid)).all()
     events = db.scalars(select(FixedEvent).where(FixedEvent.owner_uid == uid)).all()
 

@@ -27,6 +27,28 @@ def _check_goal(session: Session, uid: str, goal_id: str | None):
         _owned(session, Goal, uid, goal_id)
 
 
+def _check_parent(session: Session, uid: str, parent_id: str | None, task_id: str | None = None):
+    """Validate same-owner task ancestry; reject self/cyclic or already-booked parents."""
+    if parent_id is None:
+        return
+    visited = set()
+    current_id = parent_id
+    while current_id is not None:
+        if current_id == task_id or current_id in visited:
+            raise HTTPException(409, "A task cannot be its own ancestor")
+        visited.add(current_id)
+        ancestor = _owned(session, Task, uid, current_id)
+        if current_id == parent_id:
+            if ancestor.status != "pending":
+                raise HTTPException(409, "Only a pending task can be a parent")
+            existing_block = session.scalar(select(ScheduleBlock.id).where(
+                ScheduleBlock.owner_uid == uid, ScheduleBlock.task_id == current_id
+            ).limit(1))
+            if existing_block is not None:
+                raise HTTPException(409, "Remove the parent's scheduled sessions before adding subtasks")
+        current_id = ancestor.parent_task_id
+
+
 @router.get("/goals", response_model=list[GoalOut])
 def list_goals(user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     return db.scalars(select(Goal).where(Goal.owner_uid == user["uid"]).order_by(Goal.created_at)).all()
@@ -80,7 +102,9 @@ def list_tasks(status: str = "all", user: dict = Depends(get_current_user), db: 
 def create_task(body: TaskCreate, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     uid = user["uid"]
     get_or_create_user(db, uid)
+    db.scalar(select(User).where(User.uid == uid).with_for_update())
     _check_goal(db, uid, body.goal_id)
+    _check_parent(db, uid, body.parent_task_id)
     row = Task(owner_uid=uid, **body.model_dump())
     db.add(row)
     db.commit()
@@ -107,6 +131,8 @@ def patch_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_current_
     if "goal_id" in changes:
         _check_goal(db, uid, changes["goal_id"])
     original = _owned(db, Task, uid, task_id)
+    if "parent_task_id" in changes and changes["parent_task_id"] != original.parent_task_id:
+        _check_parent(db, uid, changes["parent_task_id"], task_id=task_id)
     now = datetime.now(timezone.utc)
     scheduled = db.scalars(select(ScheduleBlock).where(
         ScheduleBlock.owner_uid == uid, ScheduleBlock.task_id == task_id
@@ -151,6 +177,10 @@ def delete_task(task_id: str, user: dict = Depends(get_current_user), db: Sessio
     uid = user["uid"]
     db.scalar(select(User).where(User.uid == uid).with_for_update())
     row = _owned(db, Task, uid, task_id)
+    if db.scalar(select(Task.id).where(
+        Task.owner_uid == uid, Task.parent_task_id == task_id
+    ).limit(1)) is not None:
+        raise HTTPException(409, "Delete or detach subtasks before deleting their parent")
     if db.scalar(select(ScheduleBlock.id).where(
         ScheduleBlock.owner_uid == uid, ScheduleBlock.task_id == task_id
     ).limit(1)) is not None:
@@ -173,9 +203,16 @@ def delete_task(task_id: str, user: dict = Depends(get_current_user), db: Sessio
     db.commit()
 
 
+class SubtaskDraft(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(default="", max_length=4000)
+    duration_minutes: int = Field(ge=10, le=1440)
+
+
 class DecomposeInput(BaseModel):
     num_subtasks: int = Field(default=3, ge=2, le=5)
     prompt_hint: str | None = Field(default=None, max_length=500)
+    subtasks: list[SubtaskDraft] | None = Field(default=None, min_length=2, max_length=5)
     apply: bool = False
 
 
@@ -191,17 +228,50 @@ def decompose_task_endpoint(
     task = _owned(db, Task, uid, task_id)
     if task.status != "pending":
         raise HTTPException(409, "Only pending tasks can be decomposed")
-    if task.duration_minutes < 20:
-        raise HTTPException(409, "Task duration is too short to decompose (minimum 20 minutes)")
+    if db.scalar(select(Task.id).where(
+        Task.owner_uid == uid, Task.parent_task_id == task.id
+    ).limit(1)) is not None:
+        raise HTTPException(409, "This task already has subtasks")
+    if db.scalar(select(ScheduleBlock.id).where(
+        ScheduleBlock.owner_uid == uid, ScheduleBlock.task_id == task.id
+    ).limit(1)) is not None:
+        raise HTTPException(409, "Remove scheduled sessions before decomposing this task")
+    n = len(body.subtasks) if body.subtasks is not None else body.num_subtasks
+    if task.duration_minutes < n * 10:
+        raise HTTPException(422, "Task duration must allow at least 10 minutes for each subtask")
 
-    generated_subtasks = decompose_task_logic(
-        task_title=task.title,
-        task_desc=task.description or "",
-        duration_minutes=task.duration_minutes,
-        deadline_at=task.deadline_at,
-        num_subtasks=body.num_subtasks,
-        prompt_hint=body.prompt_hint,
-    )
+    if body.subtasks is not None:
+        generated_subtasks = [
+            {**item.model_dump(), "splittable": item.duration_minutes > 45, "importance": task.importance}
+            for item in body.subtasks
+        ]
+        if sum(item["duration_minutes"] for item in generated_subtasks) != task.duration_minutes:
+            raise HTTPException(422, "Approved subtask durations must equal the original task duration")
+        for item in generated_subtasks:
+            if not item["title"].strip():
+                raise HTTPException(422, "Subtask title cannot be blank")
+    else:
+        generated_subtasks = decompose_task_logic(
+            task_title=task.title,
+            task_desc=task.description or "",
+            duration_minutes=task.duration_minutes,
+            deadline_at=task.deadline_at,
+            num_subtasks=body.num_subtasks,
+            prompt_hint=body.prompt_hint,
+        )
+        # Normalize model-estimated durations to the parent's exact remaining effort.
+        # Preserve all semantic titles and prevent estimated work being counted twice.
+        raw_weights = [max(1, int(item["duration_minutes"])) for item in generated_subtasks]
+        slots = len(raw_weights)
+        if task.duration_minutes < slots * 10:
+            raise HTTPException(422, "Insufficient duration for generated subtasks")
+        remaining = task.duration_minutes - slots * 10
+        weight_sum = sum(raw_weights)
+        extra = [(remaining * weight) // weight_sum for weight in raw_weights]
+        for i in range(remaining - sum(extra)):
+            extra[i % slots] += 1
+        for i, item in enumerate(generated_subtasks):
+            item["duration_minutes"] = 10 + extra[i]
 
     if not body.apply:
         return {

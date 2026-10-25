@@ -1,5 +1,8 @@
 """Lazy database wiring. Importing the legacy app never connects to Postgres."""
 import os
+
+from dotenv import load_dotenv
+load_dotenv(override=False)
 from functools import lru_cache
 
 from fastapi import HTTPException

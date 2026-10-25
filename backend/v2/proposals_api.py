@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from middleware.auth import get_current_user
 from .calendar_api import conflict
 from .db import get_or_create_user, get_session
-from .models import FixedEvent, PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, User
+from .models import FixedEvent, PlanProposal, PlanningDecisionLog, Preference, ScheduleBlock, Task, TaskDependency, User
 from .planning_api import get_preview
 
 router = APIRouter(prefix="/api/v2/plans", tags=["v2-approvals"])
@@ -96,6 +96,23 @@ def verify_candidate(db: Session, uid: str, plan: PlanProposal, now: datetime):
     for task_id, old_version in all_versions.items():
         if tasks[task_id].version != old_version or tasks[task_id].status != "pending":
             raise HTTPException(409, "A task changed; generate a new proposal")
+
+    # Pending plans can outlive task hierarchy and prerequisite edits. Never
+    # schedule a container or a newly blocked task just because its plan is old.
+    container_ids = set(db.scalars(select(Task.parent_task_id).where(
+        Task.owner_uid == uid, Task.parent_task_id.in_(list(tasks))
+    )).all())
+    if container_ids:
+        raise HTTPException(409, "A planned task now has subtasks; generate a new proposal")
+    prerequisites = db.scalars(select(TaskDependency).where(
+        TaskDependency.owner_uid == uid, TaskDependency.task_id.in_(list(tasks))
+    )).all()
+    prerequisite_ids = {edge.depends_on_id for edge in prerequisites}
+    states = dict(db.execute(select(Task.id, Task.status).where(
+        Task.owner_uid == uid, Task.id.in_(prerequisite_ids)
+    )).all()) if prerequisite_ids else {}
+    if any(states.get(edge.depends_on_id) != "completed" for edge in prerequisites):
+        raise HTTPException(409, "A planned task has an unfinished prerequisite")
 
     pref = plan.preferences_snapshot
     zone = ZoneInfo(pref["timezone"])

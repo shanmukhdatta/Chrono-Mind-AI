@@ -1,5 +1,8 @@
 # V2 Firestore → PostgreSQL Migration Strategy (Phase 2)
 
+> **Historical proposal.** The statement below that no migration scripts exist is no longer current: V2 Alembic schema migrations now exist through revision `0013_focus_context`. **Live Firestore cutover has still not been verified or executed as part of this finalization.** See [SETUP_V2.md](SETUP_V2.md).
+
+
 This is a proposal, **not an executed migration**. Phase 0 must not alter or delete live Firestore documents.
 
 ## Scope and ownership

@@ -77,7 +77,7 @@ def delete_user_account_data(
     user: dict = Depends(get_current_user),
     db: Session = Depends(get_session),
 ):
-    """Safely and permanently purge all V2 PostgreSQL records and legacy collections for this user."""
+    """Purge SQL records, attempt external cleanup, and disclose incomplete account erasure."""
     from sqlalchemy import delete
     uid = user["uid"]
 
@@ -152,11 +152,23 @@ def delete_user_account_data(
         # unconfigured database must not undo the completed PostgreSQL purge.
         checkpoints_cleaned = False
 
+    # Firebase Authentication identity is deliberately NOT deleted here.
+    # A successful SQL purge is not the same as complete cross-store account erasure.
+    incomplete = ["Firebase Authentication identity (not deleted by this API)"]
+    if not firestore_cleaned:
+        incomplete.append("Legacy Firestore collections (cleanup not confirmed)")
+    if not checkpoints_cleaned:
+        incomplete.append("LangGraph checkpoint tables (cleanup not confirmed)")
     return {
-        "deleted": True,
+        "deleted": False,
+        "status": "partial",
+        "postgres_deleted": True,
         "uid": uid,
         "records_purged": deleted_counts,
         "firestore_cleaned": firestore_cleaned,
         "checkpoints_cleaned": checkpoints_cleaned,
+        "firebase_auth_deleted": False,
+        "remaining_scope": incomplete,
+        "note": "V2 PostgreSQL data was purged. Complete account erasure remains unverified.",
     }
 

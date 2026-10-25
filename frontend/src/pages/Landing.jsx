@@ -1,381 +1,109 @@
-import React, { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CalendarDays, CheckCircle2, Clock3, ListTodo, ShieldCheck, Sparkles, Target, Workflow } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
 import { useTaskStore } from '../store/taskStore'
-import { Clock, Calendar, Sparkles, Target, Repeat, Upload, ArrowRight, CheckCircle, Github } from 'lucide-react'
-import { Button } from '../components/ui/Button'
-import { motion, useScroll, useTransform } from 'framer-motion'
+
+const capabilities = [
+  { icon: Target, name: 'Plan around goals', detail: 'Keep important work connected to what matters.' },
+  { icon: CalendarDays, name: 'Make time that fits', detail: 'Respect fixed events, work hours and deadlines.' },
+  { icon: Workflow, name: 'Replan carefully', detail: 'Review proposed changes before they affect your calendar.' },
+  { icon: ShieldCheck, name: 'Keep control', detail: 'Approve important decisions and inspect their history.' },
+]
+
+const sample = [
+  ['09:00', 'College lectures', 'Fixed commitment'],
+  ['16:30', 'DSA practice', '60-minute task'],
+  ['18:00', 'Project review', '45-minute task'],
+]
 
 export default function Landing() {
   const { signIn } = useAuth()
-  const home = import.meta.env.VITE_V2_DEFAULT === 'true' ? '/dashboard-v2' : '/dashboard'
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   const navigate = useNavigate()
-  const heroRef = useRef(null)
-  const { scrollYProgress } = useScroll()
-  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95])
+  const home = import.meta.env.VITE_V2_DEFAULT === 'true' ? '/dashboard-v2' : '/dashboard'
 
   useEffect(() => {
-    if (user) navigate(home)
+    if (user) navigate(user.uid === 'demo' ? '/dashboard' : home, { replace: true })
   }, [user, navigate, home])
 
-  const handleDemoMode = () => {
+  const exploreLegacyDemo = () => {
     useAuthStore.getState().enterDemoMode()
     useTaskStore.getState().seedDemoTasks()
-    navigate(home)
-  }
-
-  const features = [
-    { icon: Sparkles, title: 'Auto-Rescheduling', desc: 'Missed important tasks automatically move to tomorrow. Never lose a commitment again.' },
-    { icon: Calendar, title: '24-Hour Calendar', desc: 'Full day view from midnight to midnight. Click any slot to add tasks instantly.' },
-    { icon: Target, title: 'Smart Priority', desc: 'Important tasks get rescheduled. Optional unfinished tasks are preserved for review. Smart clutter-free planning.' },
-    { icon: Sparkles, title: 'AI Assistant', desc: 'Voice and text scheduling. Just say "Practice DSA for 1 hour from now" and it is done.' },
-    { icon: Repeat, title: 'Recurrence (Planned)', desc: 'Save repeat preferences now. Automatic creation of future occurrences is planned for V2 Phase 3.' },
-    { icon: Upload, title: 'Timetable Import', desc: 'Upload your college timetable (Phase 2 preview). OCR integration coming soon.' },
-  ]
-
-  const steps = [
-    { num: '01', title: 'Add Your Tasks', desc: 'Manually or via AI voice assistant' },
-    { num: '02', title: 'Focus on Your Day', desc: 'Work with a clean 24-hour calendar view' },
-    { num: '03', title: 'ChronoMind Handles Rest', desc: 'Auto-reschedule what you missed overnight' },
-  ]
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } }
+    navigate('/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-cream overflow-x-hidden font-sans">
-      {/* Skip Link */}
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-peach text-white px-4 py-2 rounded-lg z-50">
-        Skip to content
-      </a>
-
-      {/* Navbar */}
-      <motion.nav 
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100, damping: 20 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-white/40 backdrop-blur-xl border-b border-white/40 shadow-sm"
-      >
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <div className="w-8 h-8 bg-gradient-to-tr from-peach to-peach-light rounded-lg flex items-center justify-center shadow-lg">
-              <Clock className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight">
-              <span className="text-peach">Chrono</span><span className="text-dark">Mind</span>
-            </span>
-          </motion.div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-dark-muted">
-            <a href="#features" className="hover:text-peach transition-colors relative group">
-              Features
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-peach transition-all group-hover:w-full"></span>
-            </a>
-            <a href="#how-it-works" className="hover:text-peach transition-colors relative group">
-              How It Works
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-peach transition-all group-hover:w-full"></span>
-            </a>
-          </div>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button onClick={signIn} className="text-sm shadow-md shadow-peach/20 bg-peach hover:bg-peach-dark">Sign In</Button>
-          </motion.div>
+    <div className="min-h-screen bg-cream text-dark">
+      <a href="#main" className="skip-link">Skip to content</a>
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+          <Link to="/" className="flex items-center gap-3 font-semibold tracking-tight" aria-label="ChronoMind home">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-peach text-white"><Clock3 size={19} aria-hidden="true"/></span>
+            <span>ChronoMind <span className="text-dark-muted font-normal">AI</span></span>
+          </Link>
+          <nav aria-label="Public navigation" className="flex items-center gap-4 text-sm">
+            <a href="#features" className="hidden text-dark-muted hover:text-dark sm:inline">Features</a>
+            <Link to="/demo" className="text-dark-muted hover:text-dark">Preview</Link>
+            <button type="button" className="btn-primary !px-4 !py-2" onClick={signIn}>Sign in</button>
+          </nav>
         </div>
-      </motion.nav>
-
+      </header>
       <main id="main">
-        {/* Hero */}
-        <section ref={heroRef} className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-          {/* Animated Background blobs */}
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1],
-              rotate: [0, 90, 0],
-              opacity: [0.3, 0.5, 0.3]
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-peach/30 to-purple-300/30 rounded-full blur-[120px] -z-10" 
-          />
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.5, 1],
-              rotate: [0, -90, 0],
-              opacity: [0.2, 0.4, 0.2]
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-gradient-to-tr from-blue-300/30 to-peach-light/30 rounded-full blur-[100px] -z-10" 
-          />
-
-          <motion.div 
-            style={{ opacity, scale }}
-            className="max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center z-10"
-          >
-            <motion.div 
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="space-y-8"
-            >
-              <motion.div variants={itemVariants} className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-md border border-white/50 shadow-sm rounded-full px-4 py-2">
-                <Sparkles className="w-4 h-4 text-peach" />
-                <span className="text-sm font-medium text-peach-dark">AI-Powered Day Planner</span>
-              </motion.div>
-
-              <motion.h1 variants={itemVariants} className="font-display text-5xl md:text-6xl lg:text-7xl font-bold text-dark leading-tight tracking-tight">
-                Plan Less.<br />
-                <span className="bg-gradient-to-r from-peach via-peach-dark to-orange-500 bg-clip-text text-transparent">Achieve More.</span>
-              </motion.h1>
-
-              <motion.p variants={itemVariants} className="text-xl text-dark-muted max-w-lg leading-relaxed">
-                ChronoMind AI automatically reschedules your missed tasks — so you wake up to a plan, not a mess. Built for Indian engineering students.
-              </motion.p>
-
-              <motion.div variants={itemVariants} className="flex flex-wrap gap-4">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button onClick={signIn} className="text-lg px-8 py-4 shadow-xl shadow-peach/30 bg-peach hover:bg-peach-dark">
-                    Start for Free <ArrowRight className="w-5 h-5 ml-2 inline group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="outline" onClick={handleDemoMode} className="text-lg px-8 py-4 bg-white/40 backdrop-blur-md border-white/60 shadow-lg hover:bg-white/60 text-dark">
-                    Try Demo →
-                  </Button>
-                </motion.div>
-              </motion.div>
-
-              <motion.div variants={itemVariants} className="flex items-center gap-6 text-sm text-dark-muted font-medium">
-                {[
-                  { text: 'Google Sign-In' },
-                  { text: 'Free Forever' },
-                  { text: 'No Credit Card' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-peach drop-shadow-sm" />
-                    <span>{item.text}</span>
-                  </div>
-                ))}
-              </motion.div>
-            </motion.div>
-
-            {/* Mockup */}
-            <motion.div 
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 1, type: "spring", stiffness: 50 }}
-              className="relative lg:h-[600px] flex items-center justify-center"
-            >
-              <motion.div 
-                animate={{ y: [-10, 10, -10] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="relative w-full max-w-md"
-              >
-                {/* Decorative element behind card */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-peach to-orange-300 rounded-3xl blur-xl opacity-30" />
-                
-                <div className="bg-white/40 backdrop-blur-xl border border-white/60 p-6 rounded-3xl shadow-2xl relative overflow-hidden">
-                  {/* Inner shine */}
-                  <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-                  
-                  <div className="flex items-center gap-3 mb-6 relative z-10">
-                    <div className="w-10 h-10 bg-gradient-to-br from-peach/30 to-peach/10 rounded-full flex items-center justify-center border border-white/50 shadow-inner">
-                      <Clock className="w-5 h-5 text-peach-dark" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-dark">Today's Tasks</p>
-                      <p className="text-xs text-dark-muted">Monday, 5 May 2026</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 relative z-10">
-                    {[
-                      { title: 'Fluid Mechanics Revision', time: '10:00 - 11:30', important: true },
-                      { title: 'DSA Practice', time: '14:00 - 15:30', important: true },
-                      { title: 'Coffee Break', time: '16:00 - 16:30', important: false },
-                    ].map((task, i) => (
-                      <motion.div 
-                        whileHover={{ scale: 1.02, x: 5 }}
-                        key={i} 
-                        className={`p-3 rounded-xl border backdrop-blur-md transition-all cursor-pointer shadow-sm ${task.important ? 'bg-peach/10 border-peach/30' : 'bg-white/50 border-white/60'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-md border-2 ${task.important ? 'border-peach shadow-sm shadow-peach/20' : 'border-gray-300'}`} />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-dark">{task.title}</p>
-                            <p className="text-xs text-dark-muted font-medium">{task.time}</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1 }}
-                    className="mt-6 p-4 bg-blue-50/60 backdrop-blur-md border border-blue-200/50 rounded-xl shadow-sm relative z-10"
-                  >
-                    <p className="text-xs text-blue-800 font-medium flex items-center gap-2">
-                      <Sparkles className="w-3 h-3" />
-                      2 tasks from yesterday were rescheduled to today
-                    </p>
-                  </motion.div>
+        <section className="mx-auto grid max-w-6xl gap-10 px-5 py-16 sm:px-8 md:grid-cols-2 md:items-center md:py-24">
+          <div className="space-y-7">
+            <p className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-dark-muted"><Sparkles size={16} aria-hidden="true"/> Adaptive planning with human approval</p>
+            <h1 className="max-w-xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">A clear plan for the work that matters.</h1>
+            <p className="max-w-lg text-lg leading-relaxed text-dark-muted">Organize tasks and goals, find realistic time for deep work, and review schedule changes with an AI-assisted planner that keeps you in control.</p>
+            <div className="flex flex-wrap gap-3">
+              <button onClick={signIn} className="btn-primary" type="button">Get started</button>
+              <Link to="/demo" className="btn-outline">Explore sample workflow</Link>
+            </div>
+            <p className="text-sm text-dark-muted">Sign in to save real data. The public preview is illustrative and makes no database changes.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7" aria-label="Illustrative daily plan">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div><p className="text-sm font-medium text-dark-muted">SAMPLE WORKSPACE</p><h2 className="mt-1 text-xl font-semibold">Today's plan</h2></div>
+              <CalendarDays className="text-dark-muted" size={22} aria-hidden="true"/>
+            </div>
+            <div className="space-y-3">
+              {sample.map(([time, title, subtitle]) => (
+                <div key={time} className="flex gap-4 rounded-xl border border-slate-200 p-4">
+                  <span className="w-12 shrink-0 text-sm font-medium tabular-nums text-dark-muted">{time}</span>
+                  <div><p className="font-medium">{title}</p><p className="mt-1 text-sm text-dark-muted">{subtitle}</p></div>
                 </div>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        </section>
-
-        {/* Features */}
-        <section id="features" className="py-24 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-peach/5 to-transparent -z-10" />
-          
-          <div className="max-w-7xl mx-auto px-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-dark mb-4 tracking-tight">Everything your college schedule needs</h2>
-              <p className="text-lg text-dark-muted max-w-2xl mx-auto">Built specifically for Indian engineering students who juggle lectures, labs, assignments, and self-study.</p>
-            </motion.div>
-
-            <motion.div 
-              variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              {features.map((feature, i) => (
-                <motion.div 
-                  variants={itemVariants}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                  key={i} 
-                  className="bg-white/40 backdrop-blur-xl border border-white/60 p-8 rounded-3xl shadow-lg hover:shadow-xl transition-all group"
-                >
-                  <div className="w-14 h-14 bg-gradient-to-br from-peach/20 to-peach/5 border border-white/50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-inner">
-                    <feature.icon className="w-7 h-7 text-peach-dark drop-shadow-sm" />
-                  </div>
-                  <h3 className="text-xl font-bold text-dark mb-3">{feature.title}</h3>
-                  <p className="text-sm text-dark-muted leading-relaxed font-medium">{feature.desc}</p>
-                </motion.div>
               ))}
-            </motion.div>
+            </div>
+            <div className="mt-5 flex gap-3 rounded-xl bg-slate-50 p-4 text-sm text-dark-muted">
+              <CheckCircle2 className="shrink-0 text-peach" size={19} aria-hidden="true"/>
+              Suggested changes require your review before they are saved.
+            </div>
           </div>
         </section>
-
-        {/* How It Works */}
-        <section id="how-it-works" className="py-24 relative">
-          <div className="max-w-7xl mx-auto px-6">
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-dark mb-4 tracking-tight">How It Works</h2>
-              <p className="text-lg text-dark-muted">Three simple steps to smarter scheduling</p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-3 gap-8 relative">
-              {/* Connecting line */}
-              <div className="hidden md:block absolute top-12 left-[20%] right-[20%] h-0.5 bg-gradient-to-r from-peach/10 via-peach/40 to-peach/10" />
-
-              {steps.map((step, i) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.2 }}
-                  key={i} 
-                  className="relative text-center group"
-                >
-                  <motion.div 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="w-24 h-24 bg-white/60 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 border border-white shadow-xl shadow-peach/10"
-                  >
-                    <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-peach to-orange-400">{step.num}</span>
-                  </motion.div>
-                  <h3 className="text-xl font-bold text-dark mb-2">{step.title}</h3>
-                  <p className="text-sm text-dark-muted font-medium px-4">{step.desc}</p>
-                </motion.div>
+        <section id="features" className="border-t border-slate-200 bg-white">
+          <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+            <p className="text-sm font-semibold text-peach-dark">WHY CHRONOMIND</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">More than another to-do list</h2>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {capabilities.map(({ icon: Icon, name, detail }) => (
+                <article key={name} className="rounded-xl border border-slate-200 p-5">
+                  <Icon className="mb-5 text-peach-dark" size={23} aria-hidden="true"/>
+                  <h3 className="font-semibold">{name}</h3><p className="mt-2 text-sm leading-relaxed text-dark-muted">{detail}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
-
-        {/* CTA Banner */}
-        <section className="py-24 relative z-10">
-          <div className="max-w-7xl mx-auto px-6">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              whileHover={{ scale: 1.01 }}
-              className="bg-gradient-to-br from-peach to-orange-400 rounded-[2.5rem] p-12 md:p-16 text-center relative overflow-hidden shadow-2xl shadow-peach/30"
-            >
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMSIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuMiIvPjwvc3ZnPg==')] opacity-40 mix-blend-overlay" />
-              
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-white/20 rounded-full blur-3xl" />
-              
-              <h2 className="font-display text-4xl md:text-5xl font-bold text-white mb-6 relative z-10 drop-shadow-sm">
-                Start planning smarter today.
-              </h2>
-              <p className="text-white/90 mb-10 max-w-lg mx-auto relative z-10 text-lg font-medium">
-                Join thousands of engineering students who never miss a task again.
-              </p>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block relative z-10">
-                <Button 
-                  onClick={signIn}
-                  className="bg-white/90 backdrop-blur-md text-peach-dark hover:bg-white text-lg px-10 py-5 rounded-2xl shadow-xl transition-all font-bold"
-                >
-                  Sign in with Google
-                </Button>
-              </motion.div>
-            </motion.div>
+        <section className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-12 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div><h2 className="font-semibold">Built for thoughtful daily planning.</h2><p className="mt-1 text-sm text-dark-muted">Explore the interface without connecting a database.</p></div>
+          <div className="flex gap-3">
+            <Link to="/demo" className="btn-outline">Read-only preview</Link>
+            <button type="button" onClick={exploreLegacyDemo} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-white">Legacy local demo</button>
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white/60 backdrop-blur-lg border-t border-white/80 py-12 relative z-10 mt-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-tr from-peach to-orange-300 rounded-xl flex items-center justify-center shadow-md">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="font-bold text-dark text-lg tracking-tight">ChronoMind AI</span>
-                <p className="text-xs text-dark-muted font-medium">Plan Smarter. Study Better. Never Miss Again.</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-8 text-sm text-dark-muted font-medium">
-              <a href="https://github.com/shanmukhdatta" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-peach transition-colors">
-                <Github className="w-4 h-4" /> GitHub
-              </a>
-              <span>Built by Datta</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <footer className="border-t border-slate-200 bg-white px-5 py-6 text-center text-sm text-dark-muted">ChronoMind AI · Human-controlled adaptive planning · <a className="underline" href="https://github.com/shanmukhdatta/Chrono-Mind-AI">Source on GitHub</a></footer>
     </div>
   )
 }
