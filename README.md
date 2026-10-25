@@ -1,6 +1,6 @@
 # ChronoMind AI — Adaptive Personal Planning
 
-> **Status checked 25 October 2026:** substantial V2 prototype implemented and automated tests passing on the previously merged `main` baseline. UI simplification and final correctness fixes are under review in the finalization branch. **Real Firebase/Groq/browser integration, deployment and cross-store account erasure are not yet accepted.** This README is both a product-vision document and an engineering reference; future capabilities are explicitly marked.
+> **Final V2 code prototype — merged into `main` on 25 October 2026 (PR #44).** Minimal UI, core planning safety fixes, sample demo, configuration templates and handoff documentation are integrated. The finalization branch passed GitHub CI including PostgreSQL integration. **Live Firebase/Groq/browser testing, deployment and complete cross-store account erasure are still not verified.** This README combines the product vision with the implemented architecture; optional roadmap features are not claimed as shipped.
 
 **Core technology:** React / Vite / Tailwind · Python FastAPI · PostgreSQL / SQLAlchemy / Alembic · Firebase Authentication · LangGraph · Groq (optional for deterministic planning).
 

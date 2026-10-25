@@ -1,6 +1,6 @@
 # ChronoMind AI V2 — Final handoff and truthful project status
 
-**Last source-review checkpoint:** 2026-10-25. `main` at audit start: `d45476ed2916631cfe971381c8587b676699b3f2`. Finalization work is isolated in PR branch `finalize/v2-minimal-ui-and-correctness` until reviewed and merged by the owner.
+**Final V2 code prototype merged on 2026-10-25:** [PR #44](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/44), merge commit `6ae568eac155e5efb9548e74fb07338a10a235cc`. All finalization-branch CI jobs passed, including frontend build/tests and disposable PostgreSQL integration. This is a **code-prototype milestone**, not certification of live credentials, cloud deployment or comprehensive production readiness.
 
 ## What exists
 
@@ -11,7 +11,7 @@
 - Operator-managed scripts for notifications, recurrence and replanning; GitHub Actions backend/frontend checks and disposable PostgreSQL migration tests.
 - Read-only, visibly marked public demo at `/demo` and protected, localhost-only test fixture seeding.
 
-## Corrections in the finalization branch
+## Corrections merged into the final prototype
 
 - Simplified landing page, sidebar and typography; removed decorative motion, retained keyboard focus indicators; static UI demo distinguishes mock sample data from user records.
 - Subtask ancestors are owner-verified, cycles blocked, and parents with child tasks excluded from the schedule/priorities; parents with children cannot be silently deleted.
@@ -25,11 +25,11 @@
 
 **Substantial V2 code prototype: yes. Production readiness: not verified.** The README remains the *design specification*, including optional features deferred from V2 core.
 
-At audit time `main` had successful GitHub Actions runs, including V2 backend/frontend and disposable PostgreSQL integration. Those success results predate this branch. **Do not state that the finalization branch passes until its own CI run is completed.**
+The finalization branch passed [V2 CI](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/40192626357) and [Phase 0 Validation](https://github.com/shanmukhdatta/Chrono-Mind-AI/actions/runs/40192626323) before merging. Merge-commit CI runs independently on `main`; check the latest status in GitHub Actions. Real browser and production-service acceptance remain pending.
 
 ## Required final acceptance (not proved by source alone)
 
-1. Merge only after branch CI turns green; if red, address actual test output.
+1. Before any deployment, verify the merged `main` commit CI has passed, and correct any regressions.
 2. Local Firebase + real PostgreSQL and LangGraph restart/resume test using the setup guide.
 3. Live Groq draft creation and decomposition, including provider outage fallback.
 4. Exercise all V2 workflows in desktop + narrow mobile browsers and test accessible keyboard navigation.
@@ -41,4 +41,4 @@ At audit time `main` had successful GitHub Actions runs, including V2 backend/fr
 
 Check the current branch/PR status first. Read `docs/SETUP_V2.md`, `docs/FEATURE_MAP.md` and recent CI. Use a disposable DB, not a production account. Do not claim deployment without screenshots/logs from actual endpoints. Keep optional OR-Tools, RL, multi-agent, RAG, external calendars, push notifications and distributed infrastructure on the future roadmap rather than making them fake implemented features.
 
-**Human merge gate:** this branch should remain separate from `main` until reviewed. Do not auto-merge other dependency PRs.
+**Final code milestone:** PR #44 was merged into `main` upon the owner's request. Do not auto-merge separate dependency PRs; future production-readiness work should have its own review gate.
