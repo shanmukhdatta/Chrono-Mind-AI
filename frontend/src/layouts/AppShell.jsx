@@ -1,162 +1,113 @@
-import React, { useState } from 'react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, Sparkles, User, LogOut, Clock, Menu, X, Target, SlidersHorizontal, CalendarDays, ClipboardCheck, ListTodo, Timer, Repeat2, Bell, Bot } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Bell, Bot, CalendarDays, CheckCheck, Clock3, LayoutDashboard, ListTodo, LogOut, Menu, Repeat2, Settings2, Target, Timer, UserRound, Workflow, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthStore } from '../store/authStore'
-import { ClockWidget } from '../components/ClockWidget'
-import { NotificationBell } from '../components/NotificationBell'
 import { AssistantPanel } from '../components/AssistantPanel'
 import { FocusTimer } from '../components/FocusTimer'
 
 const V2_DEFAULT = import.meta.env.VITE_V2_DEFAULT === 'true'
-
-const NAV_ITEMS = [
-  ...(!V2_DEFAULT ? [{ path: '/dashboard', label: 'Dashboard (V1)', icon: LayoutDashboard }] : []),
-  { path: '/dashboard-v2', label: 'V2 Dashboard', icon: LayoutDashboard },
-  ...(!V2_DEFAULT ? [{ path: '/calendar', label: 'Calendar (V1)', icon: Calendar }] : []),
-  { path: '/calendar-v2', label: 'V2 Calendar', icon: CalendarDays },
-  { path: '/tasks-v2', label: 'V2 Tasks', icon: ListTodo },
-  { path: '/focus-v2', label: 'Focus Studio', icon: Timer },
-  { path: '/notifications-v2', label: 'Notifications V2', icon: Bell },
-  { path: '/recurrence-v2', label: 'Recurring Tasks', icon: Repeat2 },
-  { path: '/goals',     label: 'Goals',     icon: Target },
-  { path: '/planning', label: 'Plan Preview', icon: CalendarDays },
-  { path: '/approvals', label: 'Approvals', icon: ClipboardCheck },
-  { path: '/agent-runs', label: 'Agent Runs', icon: Bot },
-  { path: '/preferences', label: 'Preferences', icon: SlidersHorizontal },
-  ...(!V2_DEFAULT ? [{ path: '/assistant', label: 'Assistant (V1)', icon: Sparkles }] : []),
-  { path: '/assistant-v2', label: 'Assistant V2', icon: Sparkles },
-  { path: '/profile',   label: 'Profile',   icon: User },
+const sections = [
+  { title: 'Workspace', items: [
+    ['/dashboard-v2', 'Overview', LayoutDashboard],
+    ['/tasks-v2', 'Tasks', ListTodo],
+    ['/calendar-v2', 'Calendar', CalendarDays],
+    ['/goals', 'Goals', Target],
+    ['/planning', 'AI planning', Workflow],
+    ['/approvals', 'Plan approvals', CheckCheck],
+  ] },
+  { title: 'Tools', items: [
+    ['/assistant-v2', 'Assistant', Bot],
+    ['/focus-v2', 'Focus', Timer],
+    ['/recurrence-v2', 'Routines', Repeat2],
+    ['/notifications-v2', 'Notifications', Bell],
+  ] },
+  { title: 'Settings', items: [
+    ['/preferences', 'Preferences', Settings2],
+    ['/profile', 'Profile & data', UserRound],
+    ['/agent-runs', 'Agent activity', Workflow],
+  ] },
 ]
 
+const legacy = [
+  ['/dashboard', 'Legacy dashboard', LayoutDashboard],
+  ['/calendar', 'Legacy calendar', CalendarDays],
+  ['/assistant', 'Legacy assistant', Bot],
+]
+
+function SidebarLink({ to, name, Icon, onNavigate }) {
+  return (
+    <NavLink to={to} onClick={onNavigate} className={({ isActive }) =>
+      'flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ' +
+      (isActive ? 'bg-slate-100 text-dark' : 'text-dark-muted hover:bg-slate-50 hover:text-dark')
+    }>
+      <Icon aria-hidden="true" size={18} className="shrink-0"/>
+      <span>{name}</span>
+    </NavLink>
+  )
+}
+
 export function AppShell({ children }) {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   const { signOutUser } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const handleSignOut = async () => {
+  const [open, setOpen] = useState(false)
+  const current = [...sections.flatMap(s => s.items), ...legacy].find(item => item[0] === location.pathname)
+  useEffect(() => { setOpen(false) }, [location.pathname])
+  useEffect(() => {
+    if (!open) return undefined
+    const onEscape = e => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onEscape)
+    return () => window.removeEventListener('keydown', onEscape)
+  }, [open])
+  const signOut = async () => {
     await signOutUser()
-    navigate('/')
+    navigate('/', { replace: true })
   }
-
-  const currentLabel = NAV_ITEMS.find(n => location.pathname.startsWith(n.path))?.label || 'ChronoMind AI'
-
   return (
-    <div className="flex h-screen bg-cream overflow-hidden">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-dark/30 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed md:relative inset-y-0 left-0 z-40
-        w-64 flex-shrink-0 bg-white/90 backdrop-blur-glass border-r border-gray-100 flex flex-col
-        transition-transform duration-300 ease-in-out
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
-        {/* Logo */}
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-peach rounded-lg flex items-center justify-center flex-shrink-0">
-              <Clock className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold leading-none">
-                <span className="text-peach">Chrono</span><span className="text-dark">Mind</span>
-              </h1>
-              <p className="text-[10px] text-dark-muted">AI Planner</p>
-            </div>
-          </div>
-          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1 hover:bg-gray-100 rounded-lg">
-            <X className="w-5 h-5 text-dark-muted" />
-          </button>
+    <div className="flex min-h-screen bg-cream text-dark">
+      <a href="#workspace-content" className="skip-link">Skip to main content</a>
+      {open && <button type="button" aria-label="Close navigation" className="fixed inset-0 z-30 bg-slate-950/40 lg:hidden" onClick={() => setOpen(false)}/>}
+      <aside id="app-navigation" aria-label="Primary navigation" className={
+        'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ' +
+        (open ? 'translate-x-0' : '-translate-x-full')
+      }>
+        <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
+          <NavLink to={V2_DEFAULT ? '/dashboard-v2' : '/dashboard'} className="flex items-center gap-3 font-semibold tracking-tight">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-peach text-white"><Clock3 size={18} aria-hidden="true"/></span>
+            ChronoMind
+          </NavLink>
+          <button aria-label="Close menu" className="rounded-lg p-2 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(false)}><X size={19}/></button>
         </div>
-
-        {/* User info */}
-        <div className="p-4 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <img
-              src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'U')}&background=E8A87C&color=fff&size=80`}
-              alt="Profile"
-              className="w-10 h-10 rounded-full object-cover border-2 border-peach/20 flex-shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-dark truncate">{user?.displayName || 'User'}</p>
-              <p className="text-xs text-dark-muted truncate">{user?.email || ''}</p>
+        <nav aria-label="App sections" className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+          {sections.map(section => (
+            <div key={section.title}>
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{section.title}</p>
+              <div className="space-y-1">{section.items.map(([path, label, Icon]) => (
+                <SidebarLink key={path} to={path} name={label} Icon={Icon} onNavigate={() => setOpen(false)}/>
+              ))}</div>
             </div>
-          </div>
-        </div>
-
-        {/* Clock */}
-        <div className="p-4 flex-shrink-0">
-          <ClockWidget />
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(item => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-peach/15 text-peach-dark border-l-[3px] border-peach pl-[13px]'
-                    : 'text-dark-muted hover:bg-peach/5 hover:text-dark'
-                }`
-              }
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {item.label}
-            </NavLink>
           ))}
+          {!V2_DEFAULT && <div><p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Legacy V1</p>{legacy.map(([path,label,Icon]) => <SidebarLink key={path} to={path} name={label} Icon={Icon} onNavigate={() => setOpen(false)}/>)}</div>}
         </nav>
-
-        {/* Bottom */}
-        <div className="p-4 border-t border-gray-100 flex-shrink-0">
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-          <p className="text-[10px] text-dark-muted/60 text-center mt-3">
-            ChronoMind AI v2.0 · Powered by Groq + LangGraph
-          </p>
+        <div className="border-t border-slate-200 p-4">
+          <p className="truncate px-2 text-sm font-semibold">{user?.displayName || 'ChronoMind user'}</p>
+          <p className="mb-3 truncate px-2 text-xs text-dark-muted">{user?.email || (user?.uid === 'demo' ? 'Local demo · no V2 persistence' : '')}</p>
+          <button type="button" onClick={signOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-dark-muted hover:bg-slate-100 hover:text-dark"><LogOut size={17} aria-hidden="true"/> Sign out</button>
         </div>
       </aside>
-
-      {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar */}
-        <header className="h-16 bg-white/60 backdrop-blur-sm border-b border-gray-100 flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5 text-dark-muted" />
-            </button>
-            <h2 className="font-semibold text-dark">{currentLabel}</h2>
+            <button type="button" aria-label="Open menu" aria-expanded={open} aria-controls="app-navigation" onClick={() => setOpen(true)} className="rounded-lg p-2 hover:bg-slate-100 lg:hidden"><Menu size={20}/></button>
+            <h1 className="text-base font-semibold sm:text-lg">{current?.[1] || 'ChronoMind'}</h1>
           </div>
-          {V2_DEFAULT ? <NavLink to="/notifications-v2" aria-label="V2 notifications" className="p-2 rounded-xl hover:bg-gray-100"><Bell className="w-5 h-5" /></NavLink> : <NotificationBell />}
+          <NavLink to="/notifications-v2" aria-label="Notifications" className="rounded-lg p-2 text-dark-muted hover:bg-slate-100 hover:text-dark"><Bell size={20}/></NavLink>
         </header>
-
-        {/* Page */}
-        <div className="flex-1 overflow-auto p-4 md:p-6">
-          {children}
-        </div>
-      </main>
-
-      {/* Floating */}
-      {!V2_DEFAULT && <AssistantPanel />}
-      {!V2_DEFAULT && <FocusTimer />}
+        <main id="workspace-content" tabIndex={-1} className="w-full flex-1 px-4 py-6 sm:px-8 sm:py-8"><div className="mx-auto max-w-7xl">{children}</div></main>
+      </div>
+      {!V2_DEFAULT && <><AssistantPanel/><FocusTimer/></>}
     </div>
   )
 }
