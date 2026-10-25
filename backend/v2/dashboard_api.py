@@ -32,6 +32,9 @@ def dashboard(user: dict = Depends(get_current_user), db: Session = Depends(get_
     goals = db.scalars(select(Goal).where(Goal.owner_uid == uid)).all()
     active_ids = {goal.id for goal in goals if goal.status == "active"}
     pending = [task for task in tasks if task.status == "pending"]
+    # Keep parent containers in task counts, but do not recommend duplicate work.
+    container_ids = {task.parent_task_id for task in tasks if task.parent_task_id is not None}
+    actionable_pending = [task for task in pending if task.id not in container_ids]
     completed = [task for task in tasks if task.status == "completed"]
     # Past sessions for still-pending work are recorded postponements.
     postponed = {}
@@ -40,7 +43,7 @@ def dashboard(user: dict = Depends(get_current_user), db: Session = Depends(get_
             postponed[block.task_id] = postponed.get(block.task_id, 0) + 1
     focus_context = pref.focus_context if pref else None
     scored = []
-    for task in pending:
+    for task in actionable_pending:
         deadline = aware(task.deadline_at)
         signal = score_task(
             task.importance, deadline, task.goal_id in active_ids, now,
