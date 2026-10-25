@@ -1,25 +1,23 @@
-# ChronoMind AI 🧠⏰
+# ChronoMind AI — Adaptive Personal Planning
 
-> **V2 implementation status (October 2026):** The architecture below is a product specification, not a claim that every feature is shipped. Source implementation and tests are on the V2 development PRs. Review [the README-to-code audit](docs/V2_README_FEATURE_AUDIT.md) and [Antigravity integration guide](docs/V2_ANTIGRAVITY_HANDOFF.md) before enabling V2 or deploying. Production PostgreSQL/Firebase tests and remaining gaps are explicitly tracked.
+> **Status checked 25 October 2026:** substantial V2 prototype implemented and automated tests passing on the previously merged `main` baseline. UI simplification and final correctness fixes are under review in the finalization branch. **Real Firebase/Groq/browser integration, deployment and cross-store account erasure are not yet accepted.** This README is both a product-vision document and an engineering reference; future capabilities are explicitly marked.
 
+**Core technology:** React / Vite / Tailwind · Python FastAPI · PostgreSQL / SQLAlchemy / Alembic · Firebase Authentication · LangGraph · Groq (optional for deterministic planning).
 
+**What ChronoMind does:** captures tasks and goals, prioritizes work from goal/deadline/context signals, proposes feasible time blocks around existing commitments, and lets users inspect, modify, approve or undo significant schedule proposals. Optional conversational and voice interfaces help draft actions, but important writes remain user-confirmed.
 
-**AI-Powered Day Planner for College Students**  
-Built with FastAPI · LangGraph · Groq · React · Firebase
+**Start here:**
+- [17-feature technical map](docs/FEATURE_MAP.md)
+- [Local setup, keys and demo data](docs/SETUP_V2.md)
+- [Final handoff, actual limits and remaining verification](docs/FINAL_HANDOFF.md)
+- [Original comprehensive implementation matrix](docs/V2_FINAL_IMPLEMENTATION_MATRIX.md)
+- [Local CI/QA protocol](docs/V2_ANTIGRAVITY_HANDOFF.md)
 
-> **V2 development status (13 October 2026): Phase 0 safety corrections are under review on [draft PR #1](https://github.com/shanmukhdatta/Chrono-Mind-AI/pull/1). The README describes the target V2 architecture, not features already delivered.** See [implementation tracker](docs/V2_IMPLEMENTATION_TRACKER.md), [Phase 0 audit](docs/PHASE0_AUDIT.md), [development setup](docs/DEVELOPMENT.md), and the [phase-by-phase CI, review and user-merge protocol](docs/PHASE_WORKFLOW.md).
+**Demo:** `/demo` is an explicitly read-only example and does not connect to PostgreSQL. The legacy in-browser demo is separate from the authenticated V2 product. Never use demo data to claim real integration tests have passed.
 
-## Live Deployments 🚀
-- **Frontend App:** [https://chronomind-ai.vercel.app](https://chrono-mind-ai.vercel.app/) 
-- **Backend API Docs:** [https://chronomind-backend.onrender.com/docs](https://chronomind-backend.onrender.com/docs) 
+**Deployment note:** Repository deployment configuration and historical app URLs may reference legacy V1. A fully verified public V2 release, enabled cron jobs and safe migration of live Firestore data are separate acceptance tasks.
 
----
-
-> **An adaptive personal planning agent that prioritizes, schedules, replans, and explains a user's work based on goals, deadlines, availability, and learned behavior — while keeping the user in control.**
-
-ChronoMind V2 is the redesign of the original ChronoMind AI day planner into a production-style **agentic AI planning system**.
-
-The goal is not to build a chatbot that simply creates tasks. The goal is to build a reliable AI planning agent that can understand a user's changing priorities, produce feasible schedules, adapt when plans fail, learn preferences from behavior, and ask for approval before making high-impact changes.
+**Algorithm boundary:** V2 uses a deterministic greedy constraint-aware scheduler and bounded alternative search, not an OR-Tools optimization engine or reinforcement-learning agent. LangGraph checkpoints orchestration and pauses for human decisions. Advanced AI and infrastructure listed later are future directions.
 
 ---
 

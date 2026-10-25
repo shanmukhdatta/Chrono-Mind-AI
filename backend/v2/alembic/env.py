@@ -1,5 +1,8 @@
 """Explicit Alembic schema management; no implicit migration on app startup."""
 import os
+
+from dotenv import load_dotenv
+load_dotenv(override=False)
 from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, engine_from_config, pool
