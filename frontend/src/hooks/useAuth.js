@@ -9,6 +9,7 @@ export function useAuth() {
   const signIn = useCallback(async () => {
     try {
       setLoading(true)
+      if (!auth) throw new Error('Firebase is not configured. Set frontend/.env.local to sign in.')
       const result = await signInWithPopup(auth, googleProvider)
       setUser(result.user)
       return result.user
@@ -21,7 +22,7 @@ export function useAuth() {
 
   const signOutUser = useCallback(async () => {
     try {
-      await signOut(auth)
+      if (auth) await signOut(auth)
       clearUser()
     } catch (error) {
       console.error('Sign out error:', error)
@@ -29,6 +30,10 @@ export function useAuth() {
   }, [clearUser])
 
   const initAuth = useCallback(() => {
+    if (!auth) {
+      clearUser()
+      return () => {}
+    }
     return onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser(user)
