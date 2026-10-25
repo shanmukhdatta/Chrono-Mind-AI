@@ -47,7 +47,7 @@ function ProtectedRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuthStore()
   if (isLoading) return <PageLoader />
-  if (isAuthenticated) return <Navigate to={DEFAULT_HOME} replace />
+  if (isAuthenticated) return <Navigate to={useAuthStore.getState().user?.uid === 'demo' ? '/dashboard' : DEFAULT_HOME} replace />
   return children
 }
 

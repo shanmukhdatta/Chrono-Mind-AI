@@ -25,7 +25,7 @@ export default function Landing() {
   const home = import.meta.env.VITE_V2_DEFAULT === 'true' ? '/dashboard-v2' : '/dashboard'
 
   useEffect(() => {
-    if (user) navigate(home, { replace: true })
+    if (user) navigate(user.uid === 'demo' ? '/dashboard' : home, { replace: true })
   }, [user, navigate, home])
 
   const exploreLegacyDemo = () => {
