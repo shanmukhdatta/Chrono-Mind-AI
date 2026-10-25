@@ -103,7 +103,10 @@ def test_account_deletion_purges_all_user_records(test_setup):
     identity["uid"] = "alice"
     del_resp = api.delete("/api/v2/account")
     assert del_resp.status_code == 200
-    assert del_resp.json()["deleted"] is True
+    assert del_resp.json()["deleted"] is False  # Firebase identity remains; no false claim of full erasure
+    assert del_resp.json()["status"] == "partial"
+    assert del_resp.json()["postgres_deleted"] is True
+    assert del_resp.json()["firebase_auth_deleted"] is False
     assert del_resp.json()["uid"] == "alice"
 
     # Verify Alice data is completely wiped while Bob data remains

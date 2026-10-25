@@ -107,10 +107,16 @@ class DraftGoalChange(BaseModel):
         return self
 
 
+class DraftSubtask(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(default="", max_length=4000)
+    duration_minutes: int = Field(ge=10, le=1440)
+
+
 class DraftDecomposition(BaseModel):
     task_id: str = Field(min_length=1, max_length=36)
     task_title: str = Field(min_length=1, max_length=160)
-    subtasks: list[dict] = Field(default_factory=list)
+    subtasks: list[DraftSubtask] = Field(min_length=2, max_length=5)
 
 
 class DraftScheduleQuery(BaseModel):
@@ -217,13 +223,18 @@ def llm_decision(message: str, context: dict, model_name: str | None = None, usa
     client = Groq(api_key=key, timeout=12.0, max_retries=1)
     instructions = (
         "You are ChronoMind's task planning interpreter. Respond with exactly one JSON "
-        "object containing kind ('answer','draft_task','draft_goal','draft_task_change'), "
-        "message, and exactly one matching draft payload (null for unused). "
-        "draft_task_change uses an EXISTING task_id and version from task context, "
-        "operation ('update','complete','archive','delete'), plus optional title, "
-        "duration_minutes or importance ONLY for update. If ambiguous, ask a question. "
-        "For draft_task use title, "
-        "duration_minutes (1..1440), importance ('important' or 'not_important'), "
+        "object containing kind ('answer','draft_task','draft_goal','draft_task_change',"
+        "'draft_goal_change','draft_decomposition'), message, and exactly one matching "
+        "draft payload (null for unused). draft_task_change uses an EXISTING task_id and "
+        "version from task context, operation ('update','complete','archive','delete'), "
+        "plus optional title, duration_minutes or importance ONLY for update. "
+        "draft_goal_change uses an EXISTING goal_id and operation "
+        "('update','complete','pause','archive','delete'); for update supply title "
+        "or description. For draft_decomposition choose a pending task_id from context, "
+        "copy its title into task_title, and provide 2 to 5 sequential subtasks each "
+        "with title, description and duration_minutes >=10; durations MUST sum exactly "
+        "to the original task duration. If ambiguous, ask a question. For draft_task "
+        "use title, duration_minutes (1..1440), importance ('important' or 'not_important'), "
         "goal_id (existing ID or null). For draft_goal use title and description. "
         "Always draft only: NEVER claim a task or goal is saved, calendar changed, "
         "or a reminder actually sent. No direct tool execution. If a required "
@@ -235,7 +246,7 @@ def llm_decision(message: str, context: dict, model_name: str | None = None, usa
     result = client.chat.completions.create(
         model=model,
         temperature=0.0,
-        max_tokens=512,
+        max_tokens=900,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": instructions},
@@ -261,6 +272,17 @@ def llm_decision(message: str, context: dict, model_name: str | None = None, usa
         valid = {task["id"]: task["version"] for task in context["tasks"]}
         if valid.get(selection.task_id) != selection.version:
             raise ValueError("Unknown or stale task selected by the provider")
+    if decision.draft_goal_change:
+        if decision.draft_goal_change.goal_id not in {goal["id"] for goal in context["goals"]}:
+            raise ValueError("Unknown goal selected by the provider")
+    if decision.draft_decomposition:
+        draft = decision.draft_decomposition
+        tasks = {task["id"]: task for task in context["tasks"]}
+        parent = tasks.get(draft.task_id)
+        if parent is None or parent["title"] != draft.task_title:
+            raise ValueError("Decomposition selected an unknown task")
+        if sum(item.duration_minutes for item in draft.subtasks) != parent["duration_minutes"]:
+            raise ValueError("Decomposition duration does not match the task")
     return decision
 
 

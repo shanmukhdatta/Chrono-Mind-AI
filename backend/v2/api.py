@@ -241,7 +241,10 @@ def decompose_task_endpoint(
         raise HTTPException(422, "Task duration must allow at least 10 minutes for each subtask")
 
     if body.subtasks is not None:
-        generated_subtasks = [item.model_dump() for item in body.subtasks]
+        generated_subtasks = [
+            {**item.model_dump(), "splittable": item.duration_minutes > 45, "importance": task.importance}
+            for item in body.subtasks
+        ]
         if sum(item["duration_minutes"] for item in generated_subtasks) != task.duration_minutes:
             raise HTTPException(422, "Approved subtask durations must equal the original task duration")
         for item in generated_subtasks:
