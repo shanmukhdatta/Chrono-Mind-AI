@@ -59,3 +59,20 @@ def test_cross_zone_utc_deadline():
     result = preview_schedule([task], [], prefs(), instant("2026-10-15T02:00:00+00:00"), 1)
     assert result.blocks
     assert all(b.ends_at.astimezone(timezone.utc) <= task.deadline_at for b in result.blocks)
+
+
+def test_dst_transitions_preserve_elapsed_duration_and_order():
+    from datetime import timedelta
+    from v2.replanning import choose_schedule
+    for now in (instant("2026-03-08T05:00:00+00:00"),
+                instant("2026-11-01T04:00:00+00:00")):
+        options = PlanningPreferences("America/New_York", time(1), time(4), 300, 0)
+        result = preview_schedule([PlanningTask("dst", "DST", 120)], [], options, now, 1)
+        assert sum(block.duration_minutes for block in result.blocks) == 120
+        assert all(block.ends_at.astimezone(timezone.utc) - block.starts_at.astimezone(timezone.utc)
+                   == timedelta(minutes=block.duration_minutes) for block in result.blocks)
+        assert all(a.ends_at.astimezone(timezone.utc) <= b.starts_at.astimezone(timezone.utc)
+                   for a, b in zip(result.blocks, result.blocks[1:]))
+        chosen, trace = choose_schedule([PlanningTask("dst", "DST", 120)], [], options, now, 1)
+        assert sum(block.duration_minutes for block in chosen.blocks) == 120
+        assert trace["attempts"][0]["valid"]

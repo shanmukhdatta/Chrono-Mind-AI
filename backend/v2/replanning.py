@@ -22,21 +22,23 @@ def _quality(plan: PlanPreview, tasks: list[PlanningTask]) -> int:
 def _valid(plan: PlanPreview, busy: list[BusyInterval], tasks: list[PlanningTask]) -> tuple[bool, list[str]]:
     errors = []
     task_map = {t.task_id: t for t in tasks}
-    candidate = sorted(plan.blocks, key=lambda b: b.starts_at)
+    candidate = sorted(plan.blocks, key=lambda b: b.starts_at.astimezone(timezone.utc))
     for i, block in enumerate(candidate):
+        start = block.starts_at.astimezone(timezone.utc)
+        end = block.ends_at.astimezone(timezone.utc)
         task = task_map.get(block.task_id)
         if task is None:
             errors.append("UNKNOWN_TASK")
             continue
-        if block.ends_at <= block.starts_at or not 1 <= block.duration_minutes <= 90:
+        if end <= start or not 1 <= block.duration_minutes <= 90:
             errors.append("INVALID_BLOCK")
-        if task.deadline_at is not None and block.ends_at > task.deadline_at:
+        if task.deadline_at is not None and end > task.deadline_at.astimezone(timezone.utc):
             errors.append("DEADLINE_VIOLATION")
         if task.blocked_reason:
             errors.append("DEPENDENCY_VIOLATION")
-        if i and candidate[i - 1].ends_at > block.starts_at:
+        if i and candidate[i - 1].ends_at.astimezone(timezone.utc) > start:
             errors.append("TASK_OVERLAP")
-        if any(block.starts_at < fixed.end and block.ends_at > fixed.start for fixed in busy):
+        if any(start < fixed.end.astimezone(timezone.utc) and end > fixed.start.astimezone(timezone.utc) for fixed in busy):
             errors.append("FIXED_EVENT_OVERLAP")
     return not errors, sorted(set(errors))
 

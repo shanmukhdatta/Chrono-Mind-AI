@@ -1,6 +1,6 @@
 """Pure deterministic scheduling engine: no LLM calls and no database writes."""
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 
@@ -107,7 +107,15 @@ def preview_schedule(
         raise ValueError("Preferred hour must be in 0..23")
     zone = ZoneInfo(preferences.timezone)
     local_now = now.astimezone(zone)
-    occupied = list(existing)
+    # Perform interval arithmetic on the UTC timeline. Arithmetic between two
+    # datetimes sharing a ZoneInfo object otherwise uses wall time across DST.
+    occupied = []
+    for interval in existing:
+        _check_instant(interval.start)
+        _check_instant(interval.end)
+        occupied.append(BusyInterval(interval.start.astimezone(timezone.utc),
+                                     interval.end.astimezone(timezone.utc),
+                                     interval.counts_as_work))
     for interval in occupied:
         _check_instant(interval.start)
         _check_instant(interval.end)
@@ -119,15 +127,19 @@ def preview_schedule(
                 item.start - timedelta(minutes=preferences.min_break_minutes),
                 item.end + timedelta(minutes=preferences.min_break_minutes),
             )
-            for item in existing if item.counts_as_work
+            for item in occupied[:] if item.counts_as_work
         )
     blocks = []
     unscheduled = []
 
+    for task in tasks:
+        if task.deadline_at is not None:
+            _check_instant(task.deadline_at)
+
     ordered = sorted(tasks, key=lambda t: (
         -t.priority_score,
         0 if t.importance == "important" else 1,
-        t.deadline_at or datetime.max.replace(tzinfo=zone),
+        t.deadline_at.astimezone(timezone.utc) if t.deadline_at else datetime.max.replace(tzinfo=timezone.utc),
         t.task_id,
     ))
 
@@ -144,18 +156,16 @@ def preview_schedule(
         if task.blocked_reason:
             unscheduled.append(UnscheduledTask(task.task_id, task.title, remaining, task.blocked_reason))
             continue
-        if task.deadline_at is not None:
-            _check_instant(task.deadline_at)
         for day_offset in range(horizon_days):
             if remaining <= 0:
                 break
             day = local_now.date() + timedelta(days=day_offset)
-            full_day_start = datetime.combine(day, preferences.work_start, zone)
-            full_day_end = datetime.combine(day, preferences.work_end, zone)
-            day_start = max(full_day_start, local_now)
+            full_day_start = datetime.combine(day, preferences.work_start, zone).astimezone(timezone.utc)
+            full_day_end = datetime.combine(day, preferences.work_end, zone).astimezone(timezone.utc)
+            day_start = max(full_day_start, now.astimezone(timezone.utc))
             day_end = full_day_end
             if task.deadline_at is not None:
-                day_end = min(day_end, task.deadline_at.astimezone(zone))
+                day_end = min(day_end, task.deadline_at.astimezone(timezone.utc))
             if day_end <= day_start:
                 continue
             while remaining > 0:
@@ -178,7 +188,7 @@ def preview_schedule(
                     else:
                         target = datetime.combine(
                             day, time(preferences.preferred_hour), zone
-                        )
+                        ).astimezone(timezone.utc)
                         latest = close_at - timedelta(minutes=length)
                         starts = max(open_at, min(target, latest))
                         penalty = abs((starts - target).total_seconds())
@@ -189,7 +199,9 @@ def preview_schedule(
                     break
                 _, starts_at, minutes = min(candidates)
                 ends_at = starts_at + timedelta(minutes=minutes)
-                blocks.append(ProposedBlock(task.task_id, task.title, starts_at, ends_at, minutes))
+                blocks.append(ProposedBlock(task.task_id, task.title,
+                                            starts_at.astimezone(zone),
+                                            ends_at.astimezone(zone), minutes))
                 occupied.append(BusyInterval(starts_at, ends_at, counts_as_work=True))
                 if preferences.min_break_minutes:
                     padding = timedelta(minutes=preferences.min_break_minutes)
