@@ -28,7 +28,8 @@ services:
         value: llama-3.3-70b-versatile
 
   # Managed cron jobs: recurring V2 work never depends on the web process staying awake.
-  # Each job is dry-run-safe until its CHRONOMIND_*_JOB_ENABLED flag is explicitly set.
+  # These definitions enable --apply for all users and will write when deployed.
+  # Review the database target and job safety before creating or syncing them.
   - type: cron
     name: chronomind-v2-notifications
     env: python
