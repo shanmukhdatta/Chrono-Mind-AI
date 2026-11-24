@@ -3,6 +3,7 @@
 Combines user importance, deadline urgency, active goals, repeated delays,
 dependency unblocking value, and permitted behavioral focus alignments.
 """
+from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -22,8 +23,8 @@ def context_matches(focus_context: str | None, context_tags: list[str] | None) -
     """Deterministic match between the active focus context and a task's tags.
 
     Comparison is case-insensitive and whitespace-normalized. Two phrases match
-    when they share at least one meaningful token (3+ characters), or when one
-    normalized phrase contains the other, so "Placement Season" matches the tag
+    when they share at least one meaningful token (3+ characters), so
+    "Placement Season" matches the tag
     "Placement Prep" through the shared "placement" token without relying on
     fuzzy or substring-of-word heuristics.
     """
@@ -40,7 +41,7 @@ def context_matches(focus_context: str | None, context_tags: list[str] | None) -
         tag_tokens = {token for token in tag.split() if len(token) >= 3}
         if focus_tokens & tag_tokens:
             return True
-        if focus == tag or focus in tag or tag in focus:
+        if focus == tag:
             return True
     return False
 
@@ -116,3 +117,4 @@ def score_task(
         reasons.append("Blocked by unfinished prerequisite")
 
     return PrioritySignal(score=max(1, min(score, 100)), reasons=tuple(reasons))
+

@@ -1,6 +1,7 @@
 """Pure deterministic scheduling engine: no LLM calls and no database writes."""
+from __future__ import annotations
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 
@@ -63,12 +64,18 @@ def _check_instant(instant: datetime) -> None:
 
 def _work_minutes(intervals: list[BusyInterval], start: datetime, end: datetime) -> int:
     """Measure task-work occupancy within a given local workday."""
-    total = 0
-    for item in intervals:
-        if item.counts_as_work:
-            overlap = max(0, (min(end, item.end) - max(start, item.start)).total_seconds())
-            total += int(overlap // 60)
-    return total
+    # Imported overlapping sessions occupy time once, not once per record.
+    clipped = sorted((max(start, item.start), min(end, item.end))
+                     for item in intervals if item.counts_as_work
+                     and item.start < end and item.end > start)
+    total = 0.0
+    cursor = start
+    for low, high in clipped:
+        total += max(0, (high - max(cursor, low)).total_seconds())
+        cursor = max(cursor, high)
+    # Round occupied partial minutes up so the cap cannot be exceeded.
+    from math import ceil
+    return ceil(total / 60)
 
 
 def _free_windows(start: datetime, end: datetime, occupied: list[BusyInterval]):
@@ -94,6 +101,8 @@ def preview_schedule(
     preferences: PlanningPreferences,
     now: datetime,
     horizon_days: int = 7,
+    *,
+    preserve_order: bool = False,
 ) -> PlanPreview:
     """Build a bounded, conflict-free suggestion; never mutate tasks or persisted calendar."""
     _check_instant(now)
@@ -107,12 +116,15 @@ def preview_schedule(
         raise ValueError("Preferred hour must be in 0..23")
     zone = ZoneInfo(preferences.timezone)
     local_now = now.astimezone(zone)
-    occupied = list(existing)
-    for interval in occupied:
+    for interval in existing:
         _check_instant(interval.start)
         _check_instant(interval.end)
-        if interval.end <= interval.start:
+        if interval.end.astimezone(timezone.utc) <= interval.start.astimezone(timezone.utc):
             raise ValueError("Busy interval must have positive duration")
+    existing = [BusyInterval(item.start.astimezone(timezone.utc),
+                             item.end.astimezone(timezone.utc), item.counts_as_work)
+                for item in existing]
+    occupied = list(existing)
     if preferences.min_break_minutes:
         occupied.extend(
             BusyInterval(
@@ -124,7 +136,16 @@ def preview_schedule(
     blocks = []
     unscheduled = []
 
-    ordered = sorted(tasks, key=lambda t: (
+    ids = set()
+    for task in tasks:
+        if task.task_id in ids:
+            raise ValueError("Task IDs must be unique")
+        ids.add(task.task_id)
+        if task.deadline_at is not None:
+            _check_instant(task.deadline_at)
+        if isinstance(task.remaining_minutes, bool) or not isinstance(task.remaining_minutes, int) or task.remaining_minutes < 0:
+            raise ValueError("Remaining minutes must be a nonnegative integer")
+    ordered = tasks if preserve_order else sorted(tasks, key=lambda t: (
         -t.priority_score,
         0 if t.importance == "important" else 1,
         t.deadline_at or datetime.max.replace(tzinfo=zone),
@@ -150,12 +171,12 @@ def preview_schedule(
             if remaining <= 0:
                 break
             day = local_now.date() + timedelta(days=day_offset)
-            full_day_start = datetime.combine(day, preferences.work_start, zone)
-            full_day_end = datetime.combine(day, preferences.work_end, zone)
-            day_start = max(full_day_start, local_now)
+            full_day_start = datetime.combine(day, preferences.work_start, zone).astimezone(timezone.utc)
+            full_day_end = datetime.combine(day, preferences.work_end, zone).astimezone(timezone.utc)
+            day_start = max(full_day_start, now.astimezone(timezone.utc))
             day_end = full_day_end
             if task.deadline_at is not None:
-                day_end = min(day_end, task.deadline_at.astimezone(zone))
+                day_end = min(day_end, task.deadline_at.astimezone(timezone.utc))
             if day_end <= day_start:
                 continue
             while remaining > 0:
@@ -178,7 +199,7 @@ def preview_schedule(
                     else:
                         target = datetime.combine(
                             day, time(preferences.preferred_hour), zone
-                        )
+                        ).astimezone(timezone.utc)
                         latest = close_at - timedelta(minutes=length)
                         starts = max(open_at, min(target, latest))
                         penalty = abs((starts - target).total_seconds())
@@ -202,3 +223,4 @@ def preview_schedule(
                 "Insufficient available time before the deadline or planning horizon",
             ))
     return PlanPreview(tuple(blocks), tuple(unscheduled))
+
