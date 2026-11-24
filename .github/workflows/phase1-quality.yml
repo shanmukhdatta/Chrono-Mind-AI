@@ -62,6 +62,11 @@ jobs:
           CHRONOMIND_DISABLE_LEGACY_SCHEDULER: '1'
         run: python -m pytest -q
 
+      - name: Evaluate baseline and optimized scheduling scenarios
+        working-directory: backend
+        run: |
+          python -m v2.evaluation
+          python -m v2.evaluation --optimized
 
   postgres-integration:
     runs-on: ubuntu-latest
