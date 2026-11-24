@@ -210,7 +210,10 @@ def preview_schedule(
                     break
                 _, starts_at, minutes = min(candidates)
                 ends_at = starts_at + timedelta(minutes=minutes)
-                blocks.append(ProposedBlock(task.task_id, task.title, starts_at, ends_at, minutes))
+                # Preserve the public local-time contract while calculating in UTC.
+                blocks.append(ProposedBlock(task.task_id, task.title,
+                                            starts_at.astimezone(zone),
+                                            ends_at.astimezone(zone), minutes))
                 occupied.append(BusyInterval(starts_at, ends_at, counts_as_work=True))
                 if preferences.min_break_minutes:
                     padding = timedelta(minutes=preferences.min_break_minutes)

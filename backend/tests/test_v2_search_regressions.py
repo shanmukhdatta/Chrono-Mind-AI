@@ -90,6 +90,12 @@ class SearchRegressions(unittest.TestCase):
                 self.assertEqual(elapsed.total_seconds(), block.duration_minutes * 60)
             self.assertFalse(plan.unscheduled)
 
+    def test_output_preserves_preferred_local_hour(self):
+        options = PlanningPreferences("Asia/Kolkata", time(8), time(20), 120, 10, 18)
+        plan, _ = choose_schedule([PlanningTask("x", "X", 45)], [], options, self.now, 1)
+        self.assertEqual(plan.blocks[0].starts_at.hour, 18)
+        self.assertEqual(str(plan.blocks[0].starts_at.tzinfo), "Asia/Kolkata")
+
     def test_randomized_feasibility_and_baseline_quality(self):
         rng = random.Random(42)
         for _ in range(60):

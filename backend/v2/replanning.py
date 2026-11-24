@@ -31,7 +31,7 @@ def _valid(plan: PlanPreview, busy: list[BusyInterval], tasks: list[PlanningTask
            days: int | None = None) -> tuple[bool, list[str]]:
     errors = []
     task_map = {task.task_id: task for task in tasks}
-    candidate = sorted(plan.blocks, key=lambda block: block.starts_at)
+    candidate = sorted(plan.blocks, key=lambda block: block.starts_at.astimezone(timezone.utc))
     totals = defaultdict(int)
     counts = defaultdict(int)
     remaining = {}
@@ -63,7 +63,7 @@ def _valid(plan: PlanPreview, busy: list[BusyInterval], tasks: list[PlanningTask
             errors.append("DEPENDENCY_VIOLATION")
         if now is not None and start < now:
             errors.append("PAST_BLOCK")
-        if i and candidate[i - 1].ends_at > start:
+        if i and candidate[i - 1].ends_at.astimezone(timezone.utc) > start:
             errors.append("TASK_OVERLAP")
         for fixed in busy:
             if start < fixed.end and end > fixed.start:

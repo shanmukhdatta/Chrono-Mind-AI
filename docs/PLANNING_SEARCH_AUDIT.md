@@ -64,12 +64,15 @@ Source was read through the connected GitHub API. Domain checks run locally;
 the existing GitHub Actions workflow supplies Python 3.11, dependencies, frontend
 build/tests and PostgreSQL integration.
 
-- Nine new unittest regression methods pass, including 60 seeded randomized
+- Ten new unittest regression methods pass, including 60 seeded randomized
   workloads with feasibility, input immutability, deterministic repeatability,
   candidate-budget and baseline-objective comparisons.
 - Eight existing pure planner/replanner test functions pass via direct invocation.
 - Production candidate-search evaluation: 120/120 existing scenarios pass.
 - CI now runs both baseline and production-search scenario modes.
+- Initial CI found a timestamp-representation compatibility regression. Preview
+  output now retains the user's local timezone while arithmetic remains UTC;
+  a dedicated regression test preserves this contract.
 - Final GitHub CI status must be checked on the pushed commit; see the PR.
 
 The randomized comparison proves only the tested invariants and non-regression
