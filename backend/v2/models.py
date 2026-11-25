@@ -32,6 +32,7 @@ class Goal(Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     status: Mapped[str] = mapped_column(String(24), default="active", nullable=False)
     target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     __table_args__ = (CheckConstraint("status IN ('active','paused','completed','archived')", name="goal_status"),)
 
@@ -73,6 +74,7 @@ class ScheduleBlock(Base):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     source: Mapped[str] = mapped_column(String(64), default="manual", nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="schedule_order"),
         Index("ix_v2_blocks_owner_start", "owner_uid", "starts_at"),
@@ -86,6 +88,7 @@ class FixedEvent(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     __table_args__ = (
         CheckConstraint("ends_at > starts_at", name="fixed_event_order"),
         Index("ix_v2_events_owner_start", "owner_uid", "starts_at"),
@@ -119,10 +122,15 @@ class PlanProposal(Base):
     planning_trace: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     preferences_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     committed_block_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    proposal_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    operations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
-        CheckConstraint("status IN ('pending','approved','rejected','undone')", name="proposal_status"),
+        CheckConstraint("status IN ('pending','approved','rejected','undone','cancelled','stale')", name="proposal_status"),
+        UniqueConstraint("owner_uid", "idempotency_key", name="uq_v2_proposal_owner_idem"),
         Index("ix_v2_proposals_owner_created", "owner_uid", "created_at"),
     )
 
@@ -277,3 +285,60 @@ class AssistantMetric(Base):
     estimated_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     __table_args__ = (Index("ix_v2_llm_metrics_owner_date", "owner_uid", "recorded_at"),)
+
+
+class OperationReceipt(Base):
+    """Idempotent execution receipt with durable commit and read-back verification state."""
+    __tablename__ = "v2_operation_receipts"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    proposal_id: Mapped[str | None] = mapped_column(ForeignKey("v2_plan_proposals.id", ondelete="SET NULL"), nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    expected_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proposal_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    operation_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    committed_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    verified_records: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    error_detail: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (
+        UniqueConstraint("owner_uid", "idempotency_key", name="uq_v2_receipt_owner_idem"),
+        CheckConstraint(
+            "status IN ('pending','committed_unverified','verified','verification_conflict','failed')",
+            name="receipt_status",
+        ),
+        Index("ix_v2_receipt_owner_created", "owner_uid", "created_at"),
+    )
+
+
+class AgentRun(Base):
+    """Owner-scoped durable agent execution state, clarification, revisions, and receipt."""
+    __tablename__ = "v2_agent_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    owner_uid: Mapped[str] = mapped_column(ForeignKey("v2_users.uid"), nullable=False, index=True)
+    request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    proposal_id: Mapped[str | None] = mapped_column(ForeignKey("v2_plan_proposals.id", ondelete="SET NULL"), nullable=True)
+    receipt_id: Mapped[str | None] = mapped_column(ForeignKey("v2_operation_receipts.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    step: Mapped[str] = mapped_column(String(48), default="intake", nullable=False)
+    resolved_entities: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    clarification_state: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    source_revisions: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    consent_epoch: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    candidate_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    proposal_digest: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    budgets: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    error_detail: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (
+        UniqueConstraint("owner_uid", "request_id", name="uq_v2_agent_run_owner_req"),
+        CheckConstraint(
+            "status IN ('pending','awaiting_clarification','awaiting_approval','rejected','cancelled',"
+            "'stale','committed_unverified','verified','verification_conflict','no_feasible_plan','approved','undone')",
+            name="agent_run_status",
+        ),
+        Index("ix_v2_agent_run_owner_created", "owner_uid", "created_at"),
+    )

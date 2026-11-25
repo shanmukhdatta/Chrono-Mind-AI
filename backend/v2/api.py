@@ -68,12 +68,15 @@ def create_goal(body: GoalCreate, user: dict = Depends(get_current_user), db: Se
 @router.patch("/goals/{goal_id}", response_model=GoalOut)
 def patch_goal(goal_id: str, body: GoalUpdate, user: dict = Depends(get_current_user), db: Session = Depends(get_session)):
     row = _owned(db, Goal, user["uid"], goal_id)
-    for key, value in body.model_dump(exclude_unset=True).items():
+    if body.version is not None and body.version != row.version:
+        raise HTTPException(409, "Goal was modified elsewhere; refresh and try again")
+    for key, value in body.model_dump(exclude_unset=True, exclude={"version"}).items():
         if key in ("title", "description", "status") and value is None:
             raise HTTPException(422, key + " cannot be null")
         if key == "title" and not value.strip():
             raise HTTPException(422, "Title cannot be blank")
         setattr(row, key, value)
+    row.version += 1
     db.commit()
     db.refresh(row)
     return row

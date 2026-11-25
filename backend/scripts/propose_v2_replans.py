@@ -64,10 +64,14 @@ def needs_replan(db: Session, uid: str, now: datetime) -> tuple[bool, str]:
         future_planned = {
             block.task_id for block in blocks if _aware(block.ends_at) > now
         }
-        # Work that had sessions booked only in the past is unfinished missed work.
         missed = planned - future_planned
+        unplanned = scheduled_task_ids - planned
         if missed and len(planned) == len(missed):
             return True, "all sessions for pending work are in the past"
+        if missed:
+            return True, "pending task has missed past sessions without future coverage"
+        if unplanned:
+            return True, "pending task has no scheduled sessions"
         return False, "current schedule still covers pending work"
     return True, "pending work has no scheduled sessions"
 
@@ -120,12 +124,12 @@ def main():
             print(f"  {uid}: {'WOULD REPLAN' if not args.apply else 'REPLANNING'} ({reason})")
             if not args.apply:
                 continue
-            with db.begin():
-                result = create_replan_proposal(
-                    db, uid, args.days, trigger="missed_task_recovery", notify=True
-                )
-                if result["proposal_id"] is not None:
-                    created += 1
+            db.rollback()
+            result = create_replan_proposal(
+                db, uid, args.days, trigger="missed_task_recovery", notify=True
+            )
+            if result["proposal_id"] is not None:
+                created += 1
 
         print(f"Summary: replan candidates={len(uids) - skipped}, skipped={skipped}, proposals created={created}")
         if not args.apply:

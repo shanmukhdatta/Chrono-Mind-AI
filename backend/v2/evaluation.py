@@ -1,12 +1,14 @@
 """Offline deterministic planning evaluation; separate from LLM/provider evaluations."""
+from __future__ import annotations
 import json
 from datetime import datetime, time
 from pathlib import Path
 
 from v2.planner import BusyInterval, PlanningPreferences, PlanningTask, preview_schedule
+from v2.replanning import choose_schedule
 
 
-def run_case(case: dict) -> dict:
+def run_case(case: dict, optimized: bool = False) -> dict:
     now = datetime.fromisoformat(case["now"])
     preferences = PlanningPreferences(
         timezone=case["timezone"],
@@ -22,14 +24,19 @@ def run_case(case: dict) -> dict:
             task["importance"],
             datetime.fromisoformat(task["deadline"]) if task.get("deadline") else None,
             task.get("blocked_reason"),
+            task.get("priority_score", 0),
+            task.get("splittable", True),
         )
         for task in case["tasks"]
     ]
     busy = [
-        BusyInterval(datetime.fromisoformat(item["start"]), datetime.fromisoformat(item["end"]))
+        BusyInterval(datetime.fromisoformat(item["start"]), datetime.fromisoformat(item["end"]), item.get("counts_as_work", False))
         for item in case["busy"]
     ]
-    proposal = preview_schedule(tasks, busy, preferences, now, case["days"])
+    proposal = (
+        choose_schedule(tasks, busy, preferences, now, case["days"])[0]
+        if optimized else preview_schedule(tasks, busy, preferences, now, case["days"])
+    )
     placed = sum(block.duration_minutes for block in proposal.blocks)
     original = sum(task.remaining_minutes for task in tasks)
     remaining = sum(task.remaining_minutes for task in proposal.unscheduled)
@@ -67,7 +74,7 @@ def run_case(case: dict) -> dict:
     }
 
 
-def evaluate_file(path: str | Path) -> dict:
+def evaluate_file(path: str | Path, optimized: bool = False) -> dict:
     failures = []
     count = 0
     by_category: dict[str, dict[str, int]] = {}
@@ -75,7 +82,7 @@ def evaluate_file(path: str | Path) -> dict:
         for line in stream:
             if not line.strip():
                 continue
-            result = run_case(json.loads(line))
+            result = run_case(json.loads(line), optimized=optimized)
             count += 1
             group = by_category.setdefault(result["category"], {"passed": 0, "failed": 0})
             group["passed" if result["valid"] else "failed"] += 1
@@ -90,9 +97,10 @@ def evaluate_file(path: str | Path) -> dict:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Evaluate ChronoMind V2 scheduling invariants")
+    parser.add_argument("--optimized", action="store_true", help="Evaluate the production candidate search")
     parser.add_argument("dataset", nargs="?", default=str(Path(__file__).resolve().parents[2] / "evals" / "scenarios.jsonl"))
     args = parser.parse_args()
-    result = evaluate_file(args.dataset)
+    result = evaluate_file(args.dataset, optimized=args.optimized)
     print(json.dumps(result, indent=2))
     raise SystemExit(0 if not result["failed"] else 1)
 

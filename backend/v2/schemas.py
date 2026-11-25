@@ -30,6 +30,7 @@ class GoalUpdate(BaseModel):
     description: str | None = Field(None, max_length=4000)
     target_date: date | None = None
     status: Literal["active", "paused", "completed", "archived"] | None = None
+    version: int | None = Field(default=None, ge=1)
 
 
 class GoalOut(BaseModel):
@@ -39,6 +40,7 @@ class GoalOut(BaseModel):
     description: str
     status: str
     target_date: date | None
+    version: int = 1
 
 
 def clean_context_tags(values: list[str] | None) -> list[str]:

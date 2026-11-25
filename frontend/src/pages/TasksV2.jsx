@@ -163,6 +163,11 @@ export default function TasksV2() {
         num_subtasks: numSubtasks,
         prompt_hint: promptHint || null,
         apply: true,
+        subtasks: decompositionPreview?.subtasks?.map(s => ({
+          title: s.title,
+          description: s.description || '',
+          duration_minutes: s.duration_minutes,
+        })) || null,
       })
       toast.success('Subtasks and sequential dependencies created!')
       setDecomposeTask(null)

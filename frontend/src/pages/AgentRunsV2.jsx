@@ -55,6 +55,12 @@ export default function AgentRunsV2() {
     setRun(response.data)
   })
 
+  const cancel = () => operation(async () => {
+    if (!runId.trim()) throw new Error('Choose a saved run first.')
+    const response = await api.post('/api/v2/agent/runs/' + encodeURIComponent(runId.trim()) + '/cancel')
+    setRun(response.data)
+  })
+
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       <header>
@@ -107,10 +113,16 @@ export default function AgentRunsV2() {
                   </Link>
                 )}
                 {run.status === 'awaiting_review' && (
-                  <button type="button" onClick={resume} disabled={working}
-                    className="btn-primary text-sm">
-                    Resume after recorded approval/rejection
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={resume} disabled={working}
+                      className="btn-primary text-sm">
+                      Resume after recorded approval/rejection
+                    </button>
+                    <button type="button" onClick={cancel} disabled={working}
+                      className="border rounded-xl px-4 py-2 text-sm hover:bg-gray-100">
+                      Cancel run
+                    </button>
+                  </div>
                 )}
                 <p className="text-xs text-dark-muted">The server refuses to resume until the authenticated approval API has stored a real decision.</p>
               </div>
