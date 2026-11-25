@@ -22,6 +22,7 @@ from .db import get_session, get_or_create_user
 from .cross_replan import simulate_event_move_replan
 from .models import AssistantMetric, FixedEvent, Goal, PlanProposal, PlanningDecisionLog, Preference, Task
 from .llm_router import choose_route, simple_answer
+from .model_router import ALLOWED_MODELS as _ALLOWED_MODELS
 from .planning_api import get_targeted_preview
 from .proposals_api import compute_proposal_digest, current_prefs
 from .tools import (
@@ -37,8 +38,6 @@ from .tools import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v2/assistant", tags=["v2-assistant"])
-
-_ALLOWED_MODELS = {"llama-3.3-70b-versatile", "llama-3.1-8b-instant"}
 
 
 class ChatInput(BaseModel):
