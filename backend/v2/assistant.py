@@ -389,3 +389,16 @@ def daily_briefing(
         "upcoming_deadlines": urgent[:10],
         "source": "database",
     }
+
+
+@router.post("/investigate")
+def investigate_workspace(request: ChatInput, user: dict = Depends(get_current_user),
+                          db: Session = Depends(get_session)):
+    from .workspace_agents import investigate, provider, retrieve
+    from groq import APIError
+    try:
+        call = provider()
+        return investigate(request.message, lambda domain: retrieve(db, user["uid"], domain, request.message), call)
+    except (KeyError, APIError, ValueError) as exc:
+        logger.warning("Workspace agent unavailable: %s", type(exc).__name__)
+        raise HTTPException(503, "Workspace research is unavailable. Retry or use the task assistant.") from exc

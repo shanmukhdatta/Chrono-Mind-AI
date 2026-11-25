@@ -27,6 +27,7 @@ export default function AssistantV2() {
   const [briefing, setBriefing] = useState(null)
   const [listening, setListening] = useState(false)
   const [lang, setLang] = useState('en-IN')
+  const [research, setResearch] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const speechRef = useRef(null)
@@ -94,7 +95,7 @@ export default function AssistantV2() {
     setError('')
     setMessage('')
     try {
-      const response = await api.post('/api/v2/assistant/chat', { message: input })
+      const response = await api.post(research ? '/api/v2/assistant/investigate' : '/api/v2/assistant/chat', { message: input })
       const reply = response.data
       setHistory(existing => [...existing, { id: existing.length + 1, question: input, ...reply }])
     } catch (err) {
@@ -222,6 +223,7 @@ export default function AssistantV2() {
               <div className="bg-peach/10 rounded-xl px-4 py-3 text-sm"><strong>You:</strong> {entry.question}</div>
               <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm">
                 <strong>ChronoMind:</strong> {entry.decision?.message}
+                {entry.sources && <details><summary>Evidence from {entry.specialists.join(', ')}</summary>{Object.entries(entry.sources).map(([key, value]) => <div key={key}><strong>{key}</strong><pre className="whitespace-pre-wrap break-words">{JSON.stringify(value, null, 2)}</pre></div>)}</details>}
                 {entry.mode === 'fallback' && <p className="text-xs text-amber-700 mt-2">AI provider unavailable — deterministic fallback used.</p>}
               </div>
               {extractDraft(entry.decision) && (() => {
@@ -263,6 +265,7 @@ export default function AssistantV2() {
             </div>
           ))}
           <form onSubmit={submit} className="space-y-3 pt-3 border-t">
+            <label><input type="checkbox" checked={research} disabled={busy} onChange={e => setResearch(e.target.checked)} /> Research my workspace with AI</label>
             <label className="block text-sm font-semibold">Your request
               <textarea rows={3} className="input-field mt-2" value={message}
                 maxLength={2000} minLength={2} required
