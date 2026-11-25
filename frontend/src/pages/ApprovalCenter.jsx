@@ -63,11 +63,20 @@ export default function ApprovalCenter() {
       ? `Apply ${selected.blocks.length} proposed calendar sessions? This will save them.`
       : operation === 'undo'
         ? 'Remove the scheduled sessions created by this approved plan?'
-        : 'Reject this proposed schedule without saving it?'
+        : operation === 'cancel'
+          ? 'Cancel this proposed schedule before commit?'
+          : 'Reject this proposed schedule without saving it?'
     if (!window.confirm(question)) return
     setWorking(true)
     try {
-      const result = await api.post('/api/v2/plans/' + selected.id + '/' + operation)
+      const payload = operation === 'approve'
+        ? {
+            expected_revision: selected.revision || 1,
+            proposal_digest: selected.proposal_digest,
+            idempotency_key: `approval-center-${selected.id}-r${selected.revision || 1}`,
+          }
+        : undefined
+      const result = await api.post('/api/v2/plans/' + selected.id + '/' + operation, payload)
       await refresh()
       setError('')
       toast.success(verb + ' successfully')

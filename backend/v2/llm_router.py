@@ -39,6 +39,6 @@ def choose_route(message: str) -> ModelRoute:
 
 
 def simple_answer(context: dict) -> str:
-    pending = len(context["tasks"])
-    goals = len(context["goals"])
-    return f"You currently have {pending} pending tasks and {goals} active goals in ChronoMind V2."
+    pending = context.get("total_pending_tasks", len(context["tasks"]))
+    goals = context.get("total_active_goals", len(context["goals"]))
+    return f"You currently have {pending} pending task{'s' if pending != 1 else ''} and {goals} active goal{'s' if goals != 1 else ''} in ChronoMind V2."

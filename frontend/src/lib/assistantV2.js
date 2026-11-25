@@ -48,6 +48,14 @@ export function extractDraft(decision) {
       }
     }
   }
+  if (decision?.kind === 'draft_schedule_proposal' && decision.draft_schedule_proposal) {
+    const item = decision.draft_schedule_proposal
+    if (!item.proposal_id) return null
+    return {
+      kind: 'schedule_proposal',
+      payload: item,
+    }
+  }
   return null
 }
 

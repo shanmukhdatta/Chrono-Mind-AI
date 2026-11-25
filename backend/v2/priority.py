@@ -40,7 +40,7 @@ def context_matches(focus_context: str | None, context_tags: list[str] | None) -
         tag_tokens = {token for token in tag.split() if len(token) >= 3}
         if focus_tokens & tag_tokens:
             return True
-        if focus == tag or focus in tag or tag in focus:
+        if focus == tag:
             return True
     return False
 

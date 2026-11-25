@@ -77,5 +77,20 @@ describe('confirmable changes to existing tasks', () => {
       },
     })
   })
+
+  it('extracts schedule proposal drafts with revision and digest', () => {
+    const extracted = extractDraft({
+      kind: 'draft_schedule_proposal',
+      draft_schedule_proposal: {
+        proposal_id: 'prop-1',
+        revision: 1,
+        proposal_digest: 'abc123def456',
+        blocks: [{ task_id: 't1', title: 'Control Systems revision', duration_minutes: 30 }],
+      },
+    })
+    expect(extracted?.kind).toBe('schedule_proposal')
+    expect(extracted?.payload.proposal_id).toBe('prop-1')
+    expect(extracted?.payload.revision).toBe(1)
+  })
 })
 

@@ -13,8 +13,9 @@ from sqlalchemy.orm import Session
 from middleware.auth import get_current_user
 from .db import get_session
 from .models import (
-    BehaviorConsent, BehaviorEvent, FixedEvent, FocusSession,
-    AssistantMetric, Goal, InAppNotification, LegacyTaskArchive, PlanProposal, PlanningDecisionLog, Preference,
+    AgentRun, BehaviorConsent, BehaviorEvent, FixedEvent, FocusSession,
+    AssistantMetric, Goal, InAppNotification, LegacyTaskArchive, OperationReceipt,
+    PlanProposal, PlanningDecisionLog, Preference,
     RecurrenceOccurrence, RecurrenceSeries, RecurrenceSkip, ScheduleBlock, Task, TaskDependency, User,
 )
 
@@ -24,7 +25,8 @@ _EXPORT_TABLES = (
     ("users", User), ("goals", Goal), ("tasks", Task),
     ("schedule_blocks", ScheduleBlock), ("task_dependencies", TaskDependency), ("fixed_events", FixedEvent),
     ("preferences", Preference), ("planning_proposals", PlanProposal),
-    ("planning_decisions", PlanningDecisionLog), ("assistant_metrics", AssistantMetric),
+    ("planning_decisions", PlanningDecisionLog), ("operation_receipts", OperationReceipt),
+    ("agent_runs", AgentRun), ("assistant_metrics", AssistantMetric),
     ("recurrence_series", RecurrenceSeries),
     ("recurrence_occurrences", RecurrenceOccurrence), ("recurrence_skips", RecurrenceSkip),
     ("focus_sessions", FocusSession), ("behavior_consent", BehaviorConsent),
@@ -93,6 +95,8 @@ def delete_user_account_data(
         RecurrenceSkip,
         RecurrenceOccurrence,
         RecurrenceSeries,
+        AgentRun,
+        OperationReceipt,
         PlanningDecisionLog,
         AssistantMetric,
         PlanProposal,

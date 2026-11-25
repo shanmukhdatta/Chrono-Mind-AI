@@ -125,7 +125,30 @@ export default function AssistantV2() {
         const url = '/api/v2/tasks/' + encodeURIComponent(task_id)
         if (operation === 'delete') {
           response = await api.delete(url)
-        } else {
+        } else if (draft.kind === 'schedule_proposal') {
+        const p = draft.payload
+        const idemKey = entry.idempotencyKey || `ui-approve-${p.proposal_id}-r${p.revision}`
+        response = await api.post(`/api/v2/plans/${encodeURIComponent(p.proposal_id)}/approve`, {
+          expected_revision: p.revision,
+          proposal_digest: p.proposal_digest,
+          idempotency_key: idemKey,
+        })
+        if (response.status !== 200) throw new Error('Schedule proposal could not be approved')
+        setHistory(existing => existing.map(item => item.id === entry.id ? {
+          ...item,
+          saved: response.data.verification_status === 'verified',
+          verificationStatus: response.data.verification_status,
+          calendarLink: response.data.calendar_link || '/app/v2/calendar',
+          idempotencyKey: idemKey,
+        } : item))
+        toast.success(
+          response.data.verification_status === 'committed_unverified'
+            ? 'Committed — click Retry Verification to confirm read-back.'
+            : 'Schedule approved and verified in calendar!'
+        )
+        await readBriefing()
+        return
+      } else {
           const patch = operation === 'complete' ? { status: 'completed' }
             : operation === 'archive' ? { status: 'archived' } : changes
           response = await api.patch(url, { version, ...patch })
@@ -136,7 +159,30 @@ export default function AssistantV2() {
         const url = '/api/v2/goals/' + encodeURIComponent(goal_id)
         if (operation === 'delete') {
           response = await api.delete(url)
-        } else {
+        } else if (draft.kind === 'schedule_proposal') {
+        const p = draft.payload
+        const idemKey = entry.idempotencyKey || `ui-approve-${p.proposal_id}-r${p.revision}`
+        response = await api.post(`/api/v2/plans/${encodeURIComponent(p.proposal_id)}/approve`, {
+          expected_revision: p.revision,
+          proposal_digest: p.proposal_digest,
+          idempotency_key: idemKey,
+        })
+        if (response.status !== 200) throw new Error('Schedule proposal could not be approved')
+        setHistory(existing => existing.map(item => item.id === entry.id ? {
+          ...item,
+          saved: response.data.verification_status === 'verified',
+          verificationStatus: response.data.verification_status,
+          calendarLink: response.data.calendar_link || '/app/v2/calendar',
+          idempotencyKey: idemKey,
+        } : item))
+        toast.success(
+          response.data.verification_status === 'committed_unverified'
+            ? 'Committed — click Retry Verification to confirm read-back.'
+            : 'Schedule approved and verified in calendar!'
+        )
+        await readBriefing()
+        return
+      } else {
           const patch = ['complete', 'pause', 'archive'].includes(operation)
             ? { status: operation === 'complete' ? 'completed' : operation === 'pause' ? 'paused' : 'archived' }
             : changes
@@ -150,6 +196,29 @@ export default function AssistantV2() {
           apply: true
         })
         if (response.status !== 200) throw new Error('Decomposition could not be applied')
+      } else if (draft.kind === 'schedule_proposal') {
+        const p = draft.payload
+        const idemKey = entry.idempotencyKey || `ui-approve-${p.proposal_id}-r${p.revision}`
+        response = await api.post(`/api/v2/plans/${encodeURIComponent(p.proposal_id)}/approve`, {
+          expected_revision: p.revision,
+          proposal_digest: p.proposal_digest,
+          idempotency_key: idemKey,
+        })
+        if (response.status !== 200) throw new Error('Schedule proposal could not be approved')
+        setHistory(existing => existing.map(item => item.id === entry.id ? {
+          ...item,
+          saved: response.data.verification_status === 'verified',
+          verificationStatus: response.data.verification_status,
+          calendarLink: response.data.calendar_link || '/app/v2/calendar',
+          idempotencyKey: idemKey,
+        } : item))
+        toast.success(
+          response.data.verification_status === 'committed_unverified'
+            ? 'Committed — click Retry Verification to confirm read-back.'
+            : 'Schedule approved and verified in calendar!'
+        )
+        await readBriefing()
+        return
       } else {
         const url = draft.kind === 'task' ? '/api/v2/tasks' : '/api/v2/goals'
         response = await api.post(url, draft.payload)
@@ -167,6 +236,31 @@ export default function AssistantV2() {
       const message = friendlyError(err)
       setError(message)
       toast.error(message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const decideProposal = async (entry, action) => {
+    const draft = extractDraft(entry.decision)
+    if (!draft || draft.kind !== 'schedule_proposal' || busy || demo) return
+    setBusy(true)
+    setError('')
+    try {
+      const p = draft.payload
+      const resp = await api.post(`/api/v2/plans/${encodeURIComponent(p.proposal_id)}/${action}`)
+      setHistory(existing => existing.map(item => item.id === entry.id ? {
+        ...item,
+        proposalClosedStatus: action === 'verify' ? null : resp.data.status,
+        saved: resp.data.verification_status === 'verified',
+        verificationStatus: resp.data.verification_status,
+        calendarLink: resp.data.calendar_link || '/app/v2/calendar',
+      } : item))
+      toast.success(action === 'verify' ? `Verification status: ${resp.data.verification_status}` : `Proposal ${resp.data.status}`)
+    } catch (err) {
+      const msg = friendlyError(err)
+      setError(msg)
+      toast.error(msg)
     } finally {
       setBusy(false)
     }
@@ -226,7 +320,32 @@ export default function AssistantV2() {
               </div>
               {extractDraft(entry.decision) && (() => {
                 const draft = extractDraft(entry.decision)
-                return (
+                const decideProposal = async (entry, action) => {
+    const draft = extractDraft(entry.decision)
+    if (!draft || draft.kind !== 'schedule_proposal' || busy || demo) return
+    setBusy(true)
+    setError('')
+    try {
+      const p = draft.payload
+      const resp = await api.post(`/api/v2/plans/${encodeURIComponent(p.proposal_id)}/${action}`)
+      setHistory(existing => existing.map(item => item.id === entry.id ? {
+        ...item,
+        proposalClosedStatus: action === 'verify' ? null : resp.data.status,
+        saved: resp.data.verification_status === 'verified',
+        verificationStatus: resp.data.verification_status,
+        calendarLink: resp.data.calendar_link || '/app/v2/calendar',
+      } : item))
+      toast.success(action === 'verify' ? `Verification status: ${resp.data.verification_status}` : `Proposal ${resp.data.status}`)
+    } catch (err) {
+      const msg = friendlyError(err)
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
                   <div className="rounded-xl border border-peach/40 p-4 space-y-2">
                     <p className="text-xs uppercase font-semibold text-peach-dark flex gap-2 items-center">
                       <ShieldCheck className="w-4 h-4" /> Awaiting your confirmation
@@ -235,6 +354,7 @@ export default function AssistantV2() {
                       draft.kind === 'task_change' ? `${draft.payload.operation.toUpperCase()} Task (ID: ${draft.payload.task_id})` :
                       draft.kind === 'goal_change' ? `${draft.payload.operation.toUpperCase()} Goal (ID: ${draft.payload.goal_id})` :
                       draft.kind === 'decomposition' ? `Decompose: ${draft.payload.task_title || 'Task'} (${draft.payload.subtasks.length} subtasks)` :
+                      draft.kind === 'schedule_proposal' ? `Schedule Proposal (rev ${draft.payload.revision})` :
                       draft.payload.title
                     }</p>
                     {draft.kind === 'task' && (
@@ -247,15 +367,74 @@ export default function AssistantV2() {
                         ))}
                       </ul>
                     )}
-                    {entry.saved ? <p className="text-green-700 text-sm">Saved successfully.</p> : (
-                      <button type="button" disabled={busy} onClick={() => saveDraft(entry)} className="btn-primary text-sm">
-                        Confirm {
-                          draft.kind === 'task_change' ? draft.payload.operation + ' task' :
-                          draft.kind === 'goal_change' ? draft.payload.operation + ' goal' :
-                          draft.kind === 'decomposition' ? 'apply decomposition' :
-                          'save ' + draft.kind
-                        }
-                      </button>
+                    {draft.kind === 'schedule_proposal' && (
+                      <div className="space-y-2 text-xs text-dark-muted">
+                        {draft.payload.blocks?.length > 0 && (
+                          <ul className="list-disc pl-4 space-y-1">
+                            {draft.payload.blocks.map((blk, i) => (
+                              <li key={i}>
+                                <strong>{blk.title}</strong>: {new Date(blk.starts_at).toLocaleString()} – {new Date(blk.ends_at).toLocaleTimeString()} ({blk.duration_minutes}m)
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {draft.payload.operations?.length > 0 && (
+                          <ul className="list-disc pl-4 space-y-1">
+                            {draft.payload.operations.map((op, i) => (
+                              <li key={i}>
+                                <code>{op.op_type}</code>: {op.title || op.task_id}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                    {entry.evidence?.length > 0 && (
+                      <details className="text-xs text-dark-muted">
+                        <summary className="cursor-pointer">Cited evidence ({entry.evidence.length})</summary>
+                        <pre className="whitespace-pre-wrap break-words mt-1">{JSON.stringify(entry.evidence, null, 2)}</pre>
+                      </details>
+                    )}
+                    {entry.saved ? (
+                      <div className="flex items-center gap-3 text-sm">
+                        <p className="text-green-700">Saved and verified.</p>
+                        {draft.kind === 'schedule_proposal' && (
+                          <Link to={entry.calendarLink || '/app/v2/calendar'} className="underline text-peach-dark font-semibold">
+                            View in Calendar
+                          </Link>
+                        )}
+                      </div>
+                    ) : entry.verificationStatus === 'committed_unverified' ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-amber-700">Committed; read-back verification pending.</span>
+                        <button type="button" disabled={busy} onClick={() => decideProposal(entry, 'verify')} className="btn-primary text-xs">
+                          Retry Verification
+                        </button>
+                      </div>
+                    ) : entry.proposalClosedStatus ? (
+                      <p className="text-xs text-dark-muted capitalize">Proposal {entry.proposalClosedStatus}.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" disabled={busy} onClick={() => saveDraft(entry)} className="btn-primary text-sm">
+                          Confirm {
+                            draft.kind === 'task_change' ? draft.payload.operation + ' task' :
+                            draft.kind === 'goal_change' ? draft.payload.operation + ' goal' :
+                            draft.kind === 'decomposition' ? 'apply decomposition' :
+                            draft.kind === 'schedule_proposal' ? 'approve schedule' :
+                            'save ' + draft.kind
+                          }
+                        </button>
+                        {draft.kind === 'schedule_proposal' && (
+                          <>
+                            <button type="button" disabled={busy} onClick={() => decideProposal(entry, 'reject')} className="px-3 py-2 border rounded-xl text-sm hover:bg-gray-50">
+                              Reject
+                            </button>
+                            <button type="button" disabled={busy} onClick={() => decideProposal(entry, 'cancel')} className="px-3 py-2 border rounded-xl text-sm hover:bg-gray-50">
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )

@@ -35,6 +35,8 @@ def main():
             uids = list(db.scalars(select(User.uid).order_by(User.uid)).all())
         else:
             uids = [args.uid]
+        # End implicit read transaction before per-user transactional blocks.
+        db.rollback()
 
         print(f"Recurrence expansion worker: users={len(uids)}, horizon={args.days}d, apply={args.apply}")
         if not args.apply:

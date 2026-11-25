@@ -12,9 +12,19 @@ from langgraph.types import interrupt
 class AgentState(TypedDict, total=False):
     owner_uid: str
     run_id: str
+    request_id: str
     days: int
     preview: dict
     proposal_id: str
+    proposal_digest: str
+    candidate_ids: list[str]
+    resolved_entities: dict
+    clarification_state: dict
+    source_revisions: dict
+    consent_epoch: str
+    budgets: dict
+    receipt_id: str
+    step: str
     decision: str
     status: str
     attempt: int
@@ -53,20 +63,20 @@ def build_planner_graph(
             raise ValueError("A verified owner and unique run id are required")
         if not 1 <= int(state.get("days", 0)) <= 14:
             raise ValueError("Planning horizon must be 1..14 days")
-        return {"status": "planning", "attempt": 0, "validation_error": ""}
+        return {"status": "planning", "step": "intake", "attempt": 0, "validation_error": ""}
 
     def generate(state: AgentState) -> AgentState:
         # At most three deterministic attempts, broadening the horizon by two days.
         horizon = min(14, state["days"] + state.get("attempt", 0) * 2)
         preview = load_preview(state["owner_uid"], horizon)
-        return {"preview": preview, "status": "validating"}
+        return {"preview": preview, "status": "validating", "step": "generate"}
 
     def validate(state: AgentState) -> AgentState:
         try:
             validate_preview(state["preview"])
-            return {"validation_error": "", "status": "awaiting_persistence"}
+            return {"validation_error": "", "status": "awaiting_persistence", "step": "validate"}
         except ValueError as exc:
-            return {"validation_error": str(exc), "status": "replanning"}
+            return {"validation_error": str(exc), "status": "replanning", "step": "validate"}
 
     def route_validation(state: AgentState) -> str:
         if not state.get("validation_error"):
@@ -76,28 +86,31 @@ def build_planner_graph(
         return "exhausted"
 
     def retry(state: AgentState) -> AgentState:
-        return {"attempt": state.get("attempt", 0) + 1}
+        return {"attempt": state.get("attempt", 0) + 1, "step": "retry"}
 
     def no_plan(state: AgentState) -> AgentState:
-        return {"status": "no_feasible_plan"}
+        return {"status": "no_feasible_plan", "step": "no_plan"}
 
     def store(state: AgentState) -> AgentState:
         proposal_id = persist_proposal(state["owner_uid"], state["run_id"], state["preview"])
-        return {"proposal_id": proposal_id, "status": "awaiting_review"}
+        return {"proposal_id": proposal_id, "status": "awaiting_review", "step": "store"}
 
     def await_human(state: AgentState) -> AgentState:
         decision = interrupt({
             "proposal_id": state["proposal_id"],
             "message": "Review and approve or reject the persisted proposal in ChronoMind.",
         })
-        if decision not in ("approved", "rejected", "undone"):
+        if decision not in (
+            "approved", "rejected", "undone", "cancelled", "stale",
+            "committed_unverified", "verified", "verification_conflict",
+        ):
             raise ValueError("Unsupported approval decision")
-        return {"decision": decision}
+        return {"decision": decision, "step": "await_human"}
 
     def complete(state: AgentState) -> AgentState:
         # The actual calendar transaction is handled by the separately authenticated
         # proposal approval API before this state can be resumed.
-        return {"status": state["decision"]}
+        return {"status": state["decision"], "step": "complete"}
 
     graph = StateGraph(AgentState)
     graph.add_node("intake", intake)
