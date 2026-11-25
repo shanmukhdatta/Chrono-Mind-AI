@@ -1,6 +1,6 @@
 # ChronoMind AI — Adaptive Personal Planning
 
-> **Final V2 code prototype — merged into `main` on 25 October 2026 (PR #44).** Minimal UI, core planning safety fixes, sample demo, configuration templates and handoff documentation are integrated. The finalization branch passed GitHub CI including PostgreSQL integration. **Live Firebase/Groq/browser testing, deployment and complete cross-store account erasure are still not verified.** This README combines the product vision with the implemented architecture; optional roadmap features are not claimed as shipped.
+> **Agentic ChronoMind V2 — merged into `main` on 25 November 2026.** Includes owner-bound domain tools, exact counts/pagination, one-task scheduling with immutable revisions and idempotent receipts, cross-feature exam-move replanning with atomic multi-record commit and guarded undo, LangGraph durable execution & cancellation, hybrid lexical retrieval, and full V2 UI surfaces. See [Section 54](#54-production--free-tier-deployment-plan-devops--llmops--mlops) for the free-tier production & publishing runbook.
 
 **Core technology:** React / Vite / Tailwind · Python FastAPI · PostgreSQL / SQLAlchemy / Alembic · Firebase Authentication · LangGraph · Groq (optional for deterministic planning).
 
@@ -3557,4 +3557,93 @@ Current project:
 
 https://github.com/shanmukhdatta/Chrono-Mind-AI
 
-This README defines the target architecture for the ChronoMind V2 rebuild. Implementation should follow the phases above rather than attempting every component at once.
+---
+
+# 54. Production & Free-Tier Deployment Plan (DevOps · LLMOps · MLOps)
+
+ChronoMind V2 is designed to run in production on **zero-cost / free-tier developer accounts** while following industry DevOps, LLMOps, and MLOps practices.
+
+## 54.1 Free-Tier Production Architecture
+
+| Component | Recommended Free-Tier Service | Role & Limits |
+|---|---|---|
+| **Frontend (React + Vite)** | **Vercel Hobby** or **Cloudflare Pages** | Global static CDN for `frontend/dist` (`npm run build`), automatic preview deployments on PRs, free HTTPS. |
+| **Backend API (FastAPI)** | **Render Free Web Service** (or **Koyeb / Fly.io** free tier) | Runs `uvicorn main:app --host 0.0.0.0 --port $PORT`. Note: Render Free spins down after 15m idle (cold start ~30s); use a free uptime ping on `/health` if needed. |
+| **Database (PostgreSQL 16)** | **Supabase Free Tier** (500 MB) or **Neon Free Tier** | Authoritative V2 relational store + LangGraph checkpoint tables (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`). Always use `sslmode=require`. |
+| **Authentication** | **Firebase Spark (Free)** | Google Sign-In & ID token verification; server extracts `owner_uid` exclusively from verified tokens. |
+| **LLM Inference** | **Groq Free Tier** | Fast tier: `qwen/qwen3.8-27b`; Reasoning tier: `openai/gpt-oss-120b`. Exact reads and targeted deterministic scheduling consume **0 LLM calls**. |
+| **CI/CD & Scheduled Workers** | **GitHub Actions** (2,000 free min/month on private, unlimited on public repos) | Runs CI quality gates on every push/PR and scheduled cron jobs for recurrence expansion and proactive replanning. |
+
+---
+
+## 54.2 DevOps: Release & Migration Runbook
+
+1. **Provision Secrets (Never Commit `.env` or `service-account.json`)**:
+   - Backend environment variables:
+     - `DATABASE_URL` (PostgreSQL connection string with `?sslmode=require`)
+     - `GROQ_API_KEY`, `CHRONOMIND_LLM_FAST_MODEL=qwen/qwen3.8-27b`, `CHRONOMIND_LLM_REASONING_MODEL=openai/gpt-oss-120b`
+     - `FIREBASE_SERVICE_ACCOUNT_JSON` (or mounted `./service-account.json`)
+     - `CORS_ORIGINS=https://<your-frontend-domain>`
+     - `CHRONOMIND_DISABLE_LEGACY_SCHEDULER=1`
+   - Frontend build-time environment variables:
+     - `VITE_API_URL=https://<your-backend-domain>`
+     - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
+
+2. **Database Migration & Checkpoint Initialization (Pre-Deploy Gate)**:
+   ```bash
+   cd backend
+   python -m alembic -c alembic.ini upgrade head
+   python -m scripts.init_langgraph_checkpoints
+   ```
+
+3. **Health & Readiness Probes**:
+   - Liveness: `GET /health` → `{"status": "ok"}`
+   - Readiness (verifies PostgreSQL connectivity): `GET /health/v2` → `{"status": "ready", "database": "postgresql"}`
+
+4. **Background Workers (Free GitHub Actions Cron)**:
+   Schedule daily/periodic workflows using `DATABASE_URL` from GitHub Secrets:
+   - Recurrence expansion:
+     ```bash
+     CHRONOMIND_RECURRENCE_JOB_ENABLED=1 python -m scripts.expand_v2_recurrence --all-users --days 14 --apply
+     ```
+   - Proactive replan proposals (12h per-user cooldown built in):
+     ```bash
+     CHRONOMIND_REPLAN_JOB_ENABLED=1 python -m scripts.propose_v2_replans --all-users --days 7 --apply
+     ```
+
+5. **CI Quality Gates (`.github/workflows/phase1-quality.yml`)**:
+   - Repository hygiene check (blocks `.env`, `.pyc`, `node_modules`, service account JSONs)
+   - `pytest -q` (backend unit, API, security, and stage suites)
+   - `postgres-integration` (`alembic upgrade head`, `init_langgraph_checkpoints`, `CHRONOMIND_LIVE_PG_TEST=1 pytest -q tests/test_v2_live_postgres.py`)
+   - `python -m v2.evaluation` and `python -m v2.evaluation --optimized` (120/120 deterministic invariants)
+   - `python -m evals.agentic_eval` (end-to-end tool, receipt, and cross-owner isolation checks)
+   - Frontend `npm test && npm run build`
+
+---
+
+## 54.3 LLMOps: Routing, Budgets, Evals & Resilience
+
+- **Cost-Aware Tiered Routing**:
+  - `no_llm` (0 calls): exact counts, paginated lists, briefings, and unambiguous targeted scheduling / event-move commands.
+  - `fast` (`qwen/qwen3.8-27b`): ordinary natural-language task/goal drafting.
+  - `reasoning` (`openai/gpt-oss-120b`): complex multi-step decomposition and planning.
+- **Interactive Budgets**: 15s max model latency per run, 6,000 input / 1,200 output token ceiling, and bounded context packing (`lexical_retrieve`).
+- **Grounding & Security Boundaries**:
+  - Every entity ID and citation returned by an LLM is validated against the owner-scoped evidence packet (`validate_interpreted_intent`).
+  - Task titles, descriptions, and notes are treated strictly as untrusted data to block record-level prompt injection and cross-owner leakage.
+- **Telemetry Without Raw-Text Leakage**:
+  - `v2_assistant_metrics` (`GET /api/v2/assistant/metrics`) records tier, mode (`llm` / `deterministic` / `fallback`), model ID, token counts, latency, and operator-configured cost (`CHRONOMIND_INPUT_USD_PER_MILLION`, `CHRONOMIND_OUTPUT_USD_PER_MILLION`) without storing raw prompts or replies.
+- **Zero-Downtime Provider Outage Fallback**:
+  - If Groq rate-limits (429) or is unreachable, `assistant/chat` degrades cleanly to deterministic fallback while all forms, previews, one-task scheduling, moved-exam replanning, approvals, and undo remain 100% operational.
+
+---
+
+## 54.4 MLOps: Personalization, Objective Monitoring & Upgrade Gates
+
+- **Consented Behavioral Signals**:
+  - `BehaviorConsent` is opt-in by default. Focus-hour preference inference (`preferred_work_hour`) requires at least 5 completed focus samples within a 90-day window and is immediately invalidated upon consent revocation or account deletion (`DELETE /api/v2/account`).
+- **Offline & Production Quality Signals**:
+  - Monitor proposal **approval rate**, **block edit rate** (`PUT /api/v2/plans/{id}/blocks`), **undo rate**, and **unscheduled minutes** via `v2_plan_proposals` and `v2_planning_decision_logs`.
+- **Evidence-Gated Upgrades**:
+  - **Vector Embeddings**: Only introduce pgvector/embeddings if production logs reveal concrete lexical-retrieval paraphrase failures AND an offline paired evaluation demonstrates higher recall without cross-owner leakage.
+  - **CP-SAT / Learned Ranker**: Only replace the bounded task-order search (`replanning.py`) if measured user edit/unplaced rates show long-task starvation that a constrained solver improves within interactive latency budgets.

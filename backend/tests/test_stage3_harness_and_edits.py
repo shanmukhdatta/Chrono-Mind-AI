@@ -50,9 +50,15 @@ def test_two_tabs_cannot_authorize_unseen_edit_and_cross_owner_fails():
             tab_a_rev = prop["revision"]
             tab_a_digest = prop["proposal_digest"]
 
-            # Tab B moves the block by 1 hour -> revision increments to 2
+            # Tab B moves the block to 10:00 IST tomorrow -> revision increments to 2
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo("Asia/Kolkata")
             old_start = datetime.fromisoformat(prop["blocks"][0]["starts_at"])
-            new_start = old_start + timedelta(hours=1)
+            new_start = datetime.combine(
+                old_start.astimezone(tz).date() + timedelta(days=1),
+                time(10, 0),
+                tz,
+            )
             edited = alice_client.put(
                 f"/api/v2/plans/{prop['id']}/blocks",
                 json={"block_index": 0, "starts_at": new_start.isoformat()},
